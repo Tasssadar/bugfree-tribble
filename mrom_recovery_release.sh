@@ -11,6 +11,11 @@ elif [ "$TARGET_PRODUCT" = "cm_grouper" ]; then
     OTHER="tilapia"
     CMPR="gzip"
     DCMPR="zcat"
+elif [ "$TARGET_PRODUCT" = "cm_mako" ]; then
+    TAG="mako"
+    OTHER=""
+    CMPR="gzip"
+    DCMPR="zcat"
 else
     echo Unknown device: $TARGET_PRODUCT
     exit 1
@@ -26,26 +31,31 @@ else
 fi
 
 
-if [ -d "$TMP/mrom_recovery_release" ]; then
-    rm -r $TMP/mrom_recovery_release || exit 1
+if [ -n "$OTHER" ]; then
+    if [ -d "$TMP/mrom_recovery_release" ]; then
+        rm -r $TMP/mrom_recovery_release || exit 1
+    fi
+    mkdir $TMP/mrom_recovery_release
+    cd $TMP/mrom_recovery_release
+
+    cp -a $IMG_PATH ./
+    abootimg -x ./$(basename "$IMG_PATH")
+
+    mkdir init
+    cd init
+    $DCMPR ../initrd.img | cpio -i
+    sed -e "s/ro.build.product=$TAG/ro.build.product=$OTHER/g" default.prop > ../default.prop
+    mv ../default.prop default.prop
+
+
+    find | sort | cpio --quiet -o -H newc | $CMPR > ../initrd.img
+    cd ..
+    grep -v "bootsize" bootimg.cfg > bootimg-new.cfg
+    abootimg --create "$DEST_DIR/$DEST_NAME" -f bootimg-new.cfg -k zImage -r initrd.img
+
+    rm -r $TMP/mrom_recovery_release
+else
+    cp -a "$IMG_PATH" "$DEST_DIR/$DEST_NAME"
 fi
-mkdir $TMP/mrom_recovery_release
-cd $TMP/mrom_recovery_release
 
-cp -a $IMG_PATH ./
-abootimg -x ./$(basename "$IMG_PATH")
-
-mkdir init
-cd init
-$DCMPR ../initrd.img | cpio -i
-sed -e "s/ro.build.product=$TAG/ro.build.product=$OTHER/g" default.prop > ../default.prop
-mv ../default.prop default.prop
-
-
-find | sort | cpio --quiet -o -H newc | $CMPR > ../initrd.img
-cd ..
-grep -v "bootsize" bootimg.cfg > bootimg-new.cfg
-abootimg --create "$DEST_DIR/$DEST_NAME" -f bootimg-new.cfg -k zImage -r initrd.img
 md5sum "$DEST_DIR/$DEST_NAME"
-
-rm -r $TMP/mrom_recovery_release
