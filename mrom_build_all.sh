@@ -17,10 +17,12 @@ nofire="false"
 nogoo="false"
 build_spec=""
 forceupload="false"
+recoveryonly="false"
+multiromonly="false"
 for a in $@; do
     case $a in
         -h|--help)
-            echo "$0 [nobuild] [noclean] [nofire] [nogoo] [device=mako|grouper|flo] [forceupload]"
+            echo "$0 [nobuild] [noclean] [nofire] [nogoo] [device=mako|grouper|flo] [forceupload] [recovery] [multirom]"
             exit 0
             ;;
         nobuild)
@@ -37,6 +39,12 @@ for a in $@; do
             ;;
         forceupload)
             forceupload="true"
+            ;;
+        recovery)
+            recoveryonly="true"
+            ;;
+        multirom)
+            multiromonly="true"
             ;;
     esac
 done
@@ -82,24 +90,36 @@ for t in $TARGETS; do
         if [ "$noclean" != "true" ]; then
             rm -r "$OUT"
         fi
-        make -j4 recoveryimage multirom_zip || exit 1
+
+        if [ "$recoveryonly" == "true" ]; then
+            make -j4 recoveryimage || exit 1
+        elif [ "$multiromonly" == "true" ]; then
+            make -j4 multirom_zip || exit 1
+        else
+            make -j4 recoveryimage multirom_zip || exit 1
+        fi
     fi
 
-    mrom_recovery_release.sh || exit 1
-    upload="${upload} $DEST_DIR/$TARGET_DEVICE/TWRP_multirom_${TARGET_DEVICE}_$(date +%Y%m%d).img"
-    upload_devs="${upload_devs} ${TARGET_DEVICE}"
+    if [ "$multiromonly" == "false" ]; then
+        mrom_recovery_release.sh || exit 1
+        upload="${upload} $DEST_DIR/$TARGET_DEVICE/TWRP_multirom_${TARGET_DEVICE}_$(date +%Y%m%d).img"
+        upload_devs="${upload_devs} ${TARGET_DEVICE}"
+    fi
+
     echo ""
-    for f in $(ls "$OUT"/multirom-*v*-*.zip*); do
-        dest="$DEST_DIR/$TARGET_DEVICE/$(basename "$f" | sed s/-UNOFFICIAL//g)"
+    if [ "$recoveryonly" == "false" ]; then
+        for f in $(ls "$OUT"/multirom-*v*-*.zip*); do
+            dest="$DEST_DIR/$TARGET_DEVICE/$(basename "$f" | sed s/-UNOFFICIAL//g)"
 
-        if [[ "$dest" == *.zip ]]; then
-            upload="${upload} $dest"
-            upload_devs="${upload_devs} ${TARGET_DEVICE}"
-        fi
+            if [[ "$dest" == *.zip ]]; then
+                upload="${upload} $dest"
+                upload_devs="${upload_devs} ${TARGET_DEVICE}"
+            fi
 
-        echo Copying $(basename $f) to $dest
-        cp -a "$f" "$dest" || exit 1
-    done
+            echo Copying $(basename $f) to $dest
+            cp -a "$f" "$dest" || exit 1
+        done
+    fi
 done
 
 if [ "$nofire" == "true" ] && [ "$nogoo" == "true" ]; then
