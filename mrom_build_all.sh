@@ -1,19 +1,18 @@
 #!/bin/bash
 DEST_DIR="/home/tassadar/nexus/multirom"
 TARGETS="cm_grouper-userdebug cm_flo-userdebug cm_mako-userdebug"
-MEDIAFIRE_LOGIN="vbocek@gmail.com"
 
 API_KEY="--"
 APP_ID="--"
 
-# Includ passwords and API things
+# Include passwords and API things
 if [ -e ~/mrom_cfg.sh ]; then
     . ~/mrom_cfg.sh
 fi
 
 nobuild="false"
 noclean="false"
-nofire="false"
+nodhst="false"
 nogoo="false"
 build_spec=""
 forceupload="false"
@@ -22,7 +21,7 @@ multiromonly="false"
 for a in $@; do
     case $a in
         -h|--help)
-            echo "$0 [nobuild] [noclean] [nofire] [nogoo] [device=mako|grouper|flo] [forceupload] [recovery] [multirom]"
+            echo "$0 [nobuild] [noclean] [nodhst] [nogoo] [device=mako|grouper|flo] [forceupload] [recovery] [multirom]"
             exit 0
             ;;
         nobuild)
@@ -31,8 +30,8 @@ for a in $@; do
         noclean)
             noclean="true"
             ;;
-        nofire)
-            nofire="true"
+        nodhst)
+            nodhst="true"
             ;;
         device=*)
             build_spec="cm_${a#device=}-userdebug"
@@ -49,20 +48,20 @@ for a in $@; do
     esac
 done
 
-mediafire_pass_int=""
+dhst_pass_int=""
 gooim_pass_int=""
-if [ "$MEDIAFIRE_PASS" != "" ]; then
-    mediafire_pass_int="$(echo $MEDIAFIRE_PASS | base64 -d)"
+if [ "$DHST_PASS" != "" ]; then
+    dhst_pass_int="$(echo $DHST_PASS | base64 -d)"
 fi
 if [ "$GOOIM_PASS" != "" ]; then
     gooim_pass_int="$(echo $GOOIM_PASS | base64 -d)"
 fi
 
-if [ "$nofire" != "true" ]; then
-    while [ -z "$mediafire_pass_int" ]; do
+if [ "$nodhst" != "true" ]; then
+    while [ -z "$dhst_pass_int" ]; do
         echo
-        echo -n "Enter your mediafire password: "
-        read -s mediafire_pass_int
+        echo -n "Enter your d-h.st password: "
+        read -s dhst_pass_int
     done
 fi
 if [ "$nogoo" != "true" ]; then
@@ -122,12 +121,12 @@ for t in $TARGETS; do
     fi
 done
 
-if [ "$nofire" == "true" ] && [ "$nogoo" == "true" ]; then
+if [ "$nodhst" == "true" ] && [ "$nogoo" == "true" ]; then
     echo "Upload disabled by cmdline args, exiting"
     exit 0
 fi
 
-echo "Do you want to upload these files to MediaFire and goo.im?"
+echo "Do you want to upload these files to d-h.st and goo.im?"
 for u in $upload; do
     echo "  $u"
 done
@@ -150,11 +149,11 @@ echo
 upload=($upload)
 upload_devs=($upload_devs)
 
-if [ "$nofire" != "true" ]; then
-    echo "Uploading to mediafire"
-    token=$(mediafire_cli.py -l "$MEDIAFIRE_LOGIN" -p "$mediafire_pass_int" -k "$API_KEY" -i "$APP_ID" login)
+if [ "$nodhst" != "true" ]; then
+    echo "Uploading to d-h.st"
+    token=$(dhst_cli.py -l "$DHST_LOGIN" -p "$dhst_pass_int" login)
     if [ "$?" != "0" ]; then
-        echo "Failed to log-in to mediafire"
+        echo "Failed to log-in to d-h.st"
         exit 1
     fi
 
@@ -162,12 +161,11 @@ if [ "$nofire" != "true" ]; then
         u=${upload[$i]}
         dev=${upload_devs[$i]}
 
-        mediafire_cli.py -t "$token" -d mrom_$dev upload "$u"
+        dhst_cli.py -t "$token" -d multirom/$dev upload "$u"
         if [ "$?" != "0" ]; then
-            echo "Failed to upload $u to mediafire!"
+            echo "Failed to upload $u to d-h.st!"
             exit 1
         fi
-        token=$(mediafire_cli.py -t "$token" renew)
     done
 fi
 

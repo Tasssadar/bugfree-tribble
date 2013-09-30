@@ -174,7 +174,7 @@ class MFireAPI:
                 return 1
 
         folder_key = ""
-        if self.dest_dir:
+        if self.dest_dir and self.dest_dir != "/":
             folder_key = self.get_folder_key_recursive(self.dest_dir)
             if not folder_key:
                 print "Could not find folder " + self.dest_dir
