@@ -23,6 +23,9 @@ fi
 
 DEST_DIR="/home/tassadar/nexus/multirom/$TAG/"
 IMG_PATH="/home/tassadar/android/android-repo-cm/out/target/product/$TAG/recovery.img"
+if [ "$RECOVERY_SUBVER" == "" ]; then
+    RECOVERY_SUBVER="00"
+fi
 
 if [ "$#" -ge "1" ]; then 
     DEST_NAME="TWRP_multirom_${TAG}_$(date +%Y%m%d)-$1.img"
@@ -31,16 +34,16 @@ else
 fi
 
 
+if [ -d "$TMP/mrom_recovery_release" ]; then
+    rm -r $TMP/mrom_recovery_release || exit 1
+fi
+mkdir $TMP/mrom_recovery_release
+cd $TMP/mrom_recovery_release
+
+cp -a $IMG_PATH ./
+abootimg -x ./$(basename "$IMG_PATH")
+
 if [ -n "$OTHER" ]; then
-    if [ -d "$TMP/mrom_recovery_release" ]; then
-        rm -r $TMP/mrom_recovery_release || exit 1
-    fi
-    mkdir $TMP/mrom_recovery_release
-    cd $TMP/mrom_recovery_release
-
-    cp -a $IMG_PATH ./
-    abootimg -x ./$(basename "$IMG_PATH")
-
     mkdir init
     cd init
     $DCMPR ../initrd.img | cpio -i
@@ -50,12 +53,11 @@ if [ -n "$OTHER" ]; then
 
     find | sort | cpio --quiet -o -H newc | $CMPR > ../initrd.img
     cd ..
-    grep -v "bootsize" bootimg.cfg > bootimg-new.cfg
-    abootimg --create "$DEST_DIR/$DEST_NAME" -f bootimg-new.cfg -k zImage -r initrd.img
-
-    rm -r $TMP/mrom_recovery_release
-else
-    cp -a "$IMG_PATH" "$DEST_DIR/$DEST_NAME"
 fi
+
+grep -v "bootsize" bootimg.cfg > bootimg-new.cfg
+abootimg --create "$DEST_DIR/$DEST_NAME" -f bootimg-new.cfg -c "name = mrom$(date +%Y%m%d)-$RECOVERY_SUBVER" -k zImage -r initrd.img
+
+rm -r $TMP/mrom_recovery_release
 
 md5sum "$DEST_DIR/$DEST_NAME"
