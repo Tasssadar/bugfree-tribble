@@ -9,6 +9,7 @@ class file_info(dexml.Model):
     file_code = fields.String(tagname="file_code")
     folder_id = fields.String(tagname="folder_id")
     filename = fields.String(tagname="filename")
+    download_url = fields.String(tagname="download_url")
 
 class folder_info(dexml.Model):
     id = fields.String(tagname="id")
@@ -101,14 +102,17 @@ class DevHostAPI:
 
         file = {'files[]':open(f,'r')}
 
-        print "Uploading file " + f + (" (Replacing file " + file_code + ")" if file_code else "")
+        sys.stdout.write("Uploading file " + f + (" (Replacing file " + file_code + ")" if file_code else "") + " ... ");
+        sys.stdout.flush()
 
         r = requests.post("http://api.d-h.st/upload", files=file,data=parameters)
         res = results.parse(r.text);
 
         if res.file_infos[0].response != "Success":
-            return "Failed"
+            print "failed!"
+            return "Failed!"
 
+        print "done, link: " + res.file_infos[0].download_url;
         return ""
 
     def upload(self, files):
