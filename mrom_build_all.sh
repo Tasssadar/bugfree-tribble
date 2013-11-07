@@ -18,10 +18,13 @@ build_spec=""
 forceupload="false"
 recoveryonly="false"
 multiromonly="false"
+noupload="false"
+forcesync="false"
+nosync="false"
 for a in $@; do
     case $a in
         -h|--help)
-            echo "$0 [nobuild] [noclean] [nodhst] [nogoo] [device=mako|grouper|flo] [forceupload] [recovery] [multirom]"
+            echo "$0 [nobuild] [noclean] [nodhst] [nogoo] [device=mako|grouper|flo] [forceupload] [noupload] [forcesync] [nosync] [recovery] [multirom]"
             exit 0
             ;;
         nobuild)
@@ -38,6 +41,15 @@ for a in $@; do
             ;;
         forceupload)
             forceupload="true"
+            ;;
+        noupload)
+            noupload="true"
+            ;;
+        forcesync)
+            forcesync="true"
+            ;;
+        nosync)
+            nosync="true"
             ;;
         recovery)
             recoveryonly="true"
@@ -121,66 +133,83 @@ for t in $TARGETS; do
     fi
 done
 
-if [ "$nodhst" == "true" ] && [ "$nogoo" == "true" ]; then
-    echo "Upload disabled by cmdline args, exiting"
-    exit 0
+if [ "$nodhst" = "true" ] && [ "$nogoo" = "true" ]; then
+    noupload="true"
 fi
 
-echo "Do you want to upload these files to d-h.st and goo.im?"
-for u in $upload; do
-    echo "  $u"
-done
+if [ "$noupload" = "true" ]; then
+    echo "Upload disabled by cmdline args"
+else
+    echo "Do you want to upload these files to d-h.st and goo.im?"
+    for u in $upload; do
+        echo "  $u"
+    done
 
-if [ "$forceupload" != "true" ]; then
-    echo -n "Upload? [y/N]: "
-    read upload_files
+    if [ "$forceupload" != "true" ]; then
+        echo -n "Upload? [y/N]: "
+        read upload_files
+    else
+        echo "Upload forced, proceeding"
+    fi
 
-    if [ "$upload_files" != "y" ] && [ "$upload_files" != "Y" ]; then
+    if [ "$upload_files" = "y" ] || [ "$upload_files" = "Y" ] || [ "$forceupload" = "true" ]; then
+        echo
+
+        upload=($upload)
+        upload_devs=($upload_devs)
+
+        if [ "$nodhst" != "true" ]; then
+            echo "Uploading to d-h.st"
+            token=$(dhst_cli.py -l "$DHST_LOGIN" -p "$dhst_pass_int" login)
+            if [ "$?" != "0" ]; then
+                echo "Failed to log-in to d-h.st"
+                exit 1
+            fi
+
+            for (( i=0; i<${#upload[@]}; i++ )); do
+                u=${upload[$i]}
+                dev=${upload_devs[$i]}
+
+                dhst_cli.py -t "$token" -d multirom/$dev upload "$u"
+                if [ "$?" != "0" ]; then
+                    echo "Failed to upload $u to d-h.st!"
+                    exit 1
+                fi
+            done
+        fi
+
+        if [ "$nogoo" != "true" ]; then
+            echo
+            echo "Uploading to goo.im..."
+            for (( i=0; i<${#upload[@]}; i++ )); do
+                u=${upload[$i]}
+                dev=${upload_devs[$i]}
+
+                echo "Uploading $u"
+                sshpass -p $gooim_pass_int scp $u upload.goo.im:~/public_html/multirom/${dev}/
+                if [ "$?" != "0" ]; then
+                    echo "Failed to upload $u to goo.im!"
+                    exit 1
+                fi
+            done
+        fi
+    else
         echo
         echo "Not uploading anything"
-        exit 0
     fi
+fi
+
+if [ "$nosync" = "true" ]; then
+    echo "Sync disabled by cmdline args"
 else
-    echo "Upload forced, proceeding"
-fi
-
-echo
-
-upload=($upload)
-upload_devs=($upload_devs)
-
-if [ "$nodhst" != "true" ]; then
-    echo "Uploading to d-h.st"
-    token=$(dhst_cli.py -l "$DHST_LOGIN" -p "$dhst_pass_int" login)
-    if [ "$?" != "0" ]; then
-        echo "Failed to log-in to d-h.st"
-        exit 1
+    if [ "$forcesync" != "true" ]; then
+        echo -n "Sync files to manager? [y/N]: "
+        read upload_files
+    else
+        echo "Upload forced, proceeding"
     fi
 
-    for (( i=0; i<${#upload[@]}; i++ )); do
-        u=${upload[$i]}
-        dev=${upload_devs[$i]}
-
-        dhst_cli.py -t "$token" -d multirom/$dev upload "$u"
-        if [ "$?" != "0" ]; then
-            echo "Failed to upload $u to d-h.st!"
-            exit 1
-        fi
-    done
-fi
-
-if [ "$nogoo" != "true" ]; then
-    echo
-    echo "Uploading to goo.im..."
-    for (( i=0; i<${#upload[@]}; i++ )); do
-        u=${upload[$i]}
-        dev=${upload_devs[$i]}
-
-        echo "Uploading $u"
-        sshpass -p $gooim_pass_int scp $u upload.goo.im:~/public_html/multirom/${dev}/
-        if [ "$?" != "0" ]; then
-            echo "Failed to upload $u to goo.im!"
-            exit 1
-        fi
-    done
+    if [ "$upload_files" = "y" ] || [ "$upload_files" = "Y" ] || [ "$forcesync" = "true" ]; then
+        mrom_sync.py
+    fi
 fi
