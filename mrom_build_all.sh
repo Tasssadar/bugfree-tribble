@@ -21,10 +21,11 @@ multiromonly="false"
 noupload="false"
 forcesync="false"
 nosync="false"
+recovery_patch="00"
 for a in $@; do
     case $a in
         -h|--help)
-            echo "$0 [nobuild] [noclean] [nodhst] [nogoo] [device=mako|grouper|flo] [forceupload] [noupload] [forcesync] [nosync] [recovery] [multirom]"
+            echo "$0 [nobuild] [noclean] [nodhst] [nogoo] [device=mako|grouper|flo] [forceupload] [noupload] [forcesync] [nosync] [recovery] [multirom] [recovery_patch=00-59]"
             exit 0
             ;;
         nobuild)
@@ -56,6 +57,9 @@ for a in $@; do
             ;;
         multirom)
             multiromonly="true"
+            ;;
+        recovery_patch=*)
+            recovery_patch="${a#recovery_patch=}"
             ;;
     esac
 done
@@ -112,8 +116,14 @@ for t in $TARGETS; do
     fi
 
     if [ "$multiromonly" == "false" ]; then
-        mrom_recovery_release.sh || exit 1
-        upload="${upload} $DEST_DIR/$TARGET_DEVICE/TWRP_multirom_${TARGET_DEVICE}_$(date +%Y%m%d).img"
+        RECOVERY_SUBVER="$recovery_patch" mrom_recovery_release.sh || exit 1
+
+        patch=""
+        if [ "$recovery_patch" != "00" ]; then
+            patch="-$recovery_patch"
+        fi
+
+        upload="${upload} $DEST_DIR/$TARGET_DEVICE/TWRP_multirom_${TARGET_DEVICE}_$(date +%Y%m%d)${patch}.img"
         upload_devs="${upload_devs} ${TARGET_DEVICE}"
     fi
 

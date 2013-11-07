@@ -27,8 +27,10 @@ if [ "$RECOVERY_SUBVER" == "" ]; then
     RECOVERY_SUBVER="00"
 fi
 
-if [ "$#" -ge "1" ]; then 
+if [ "$#" -ge "1" ]; then
     DEST_NAME="TWRP_multirom_${TAG}_$(date +%Y%m%d)-$1.img"
+elif [ "$RECOVERY_SUBVER" != "00" ]; then
+    DEST_NAME="TWRP_multirom_${TAG}_$(date +%Y%m%d)-$RECOVERY_SUBVER.img"
 else
     DEST_NAME="TWRP_multirom_${TAG}_$(date +%Y%m%d).img"
 fi

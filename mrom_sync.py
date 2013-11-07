@@ -11,7 +11,7 @@ MULTIROM_DIR = "/home/tassadar/nexus/multirom/"
 CONFIG_JSON = MULTIROM_DIR + "config.json"
 
 REGEXP_MULTIROM = re.compile('^multirom-[0-9]{8}-v([0-9]{1,3})([a-z]?)-[a-z]*\.zip$')
-REGEXP_RECOVERY = re.compile('^TWRP_multirom_[a-z]*_([0-9]{8})([0-9]{2})?\.img$')
+REGEXP_RECOVERY = re.compile('^TWRP_multirom_[a-z]*_([0-9]{8})(-[0-9]{2})?\.img$')
 
 # config.json example:
 #{
