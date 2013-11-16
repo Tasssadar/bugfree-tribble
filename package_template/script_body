@@ -1,0 +1,21 @@
+ui_print("Extracting scripts...");
+
+package_extract_dir("scripts", "/tmp/");
+
+set_perm(0, 0, 0777, "/tmp/extract.sh");
+set_perm(0, 0, 0777, "/tmp/gnutar");
+
+ui_print("Exracting archive to tmp...");
+package_extract_dir("rom", "/tmp/rom/");
+
+ui_print("Extracting data to /system partition...");
+ifelse(run_program("/tmp/extract.sh") != 0,
+(
+    ui_print("** Failed to extract archive!");
+    abort();
+),"");
+
+delete("/tmp/extract.sh");
+delete("/tmp/gnutar");
+delete_recursive("/tmp/rom");
+

@@ -13,3 +13,18 @@ for f in $(ls *.sh *.py); do
         rm "$DEST/$f"
     fi
 done
+
+for f in $(ls *.c); do
+    bin=$(basename $f .c)
+    if [ "$1" != "uninstall" ]; then
+        echo "Building $(pwd)/$f to $DEST/$bin"
+        gcc $f -o "$DEST/$bin"
+    else
+        if [ ! -f "$DEST/$bin" ]; then
+            echo "$DEST/$bin does not exists"
+            continue
+        fi
+        echo "Removing $DEST/$bin"
+        rm "$DEST/$bin"
+    fi
+done
