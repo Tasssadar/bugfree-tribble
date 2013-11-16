@@ -6,7 +6,7 @@ from datetime import datetime
 MANIFEST_ADDR = "saffron:/var/www/"
 MANIFEST_NAME = "multirom_manifest.json"
 RSYNC_ADDR = "malygos:/usr/share/nginx/www/multirom/"
-BASE_ADDR = "http://54.194.25.123/multirom/"
+BASE_ADDR = "http://ec2-54-194-25-123.eu-west-1.compute.amazonaws.com/multirom/"
 MULTIROM_DIR = "/home/tassadar/nexus/multirom/"
 CONFIG_JSON = MULTIROM_DIR + "config.json"
 
@@ -22,6 +22,12 @@ REGEXP_RECOVERY = re.compile('^TWRP_multirom_[a-z]*_([0-9]{8})(-[0-9]{2})?\.img$
 #                "req_multirom": "17",
 #                "req_recovery": "mrom20111022-00"
 #            },
+#            "changelogs": [
+#                {
+#                    "name": "MultiROM",
+#                    "file": "changelog_grouper_multirom.txt"
+#                },
+#            ],
 #            "kernels": [
 #                {
 #                    "name": "Stock 4.1",
@@ -176,6 +182,13 @@ def generate(readable_json):
                 "url": BASE_ADDR + k["file"],
                 "md5": Utils.md5sum(join(MULTIROM_DIR, dev["name"], k["file"]))
             })
+
+        if "changelogs" in dev:
+            man_dev["changelogs"] = []
+            for c in dev["changelogs"]:
+                man_c = { "name": c["name"], "url": BASE_ADDR + c["file"] }
+                man_dev["changelogs"].append(man_c)
+                symlinks[dev["name"]].append(c["file"])
 
 
         man_dev["files"] = files
