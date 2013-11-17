@@ -5,8 +5,8 @@ from datetime import datetime
 
 MANIFEST_ADDR = "saffron:/var/www/"
 MANIFEST_NAME = "multirom_manifest.json"
-RSYNC_ADDR = "malygos:/usr/share/nginx/www/multirom/"
-BASE_ADDR = "http://ec2-54-194-25-123.eu-west-1.compute.amazonaws.com/multirom/"
+RSYNC_ADDR = "kalecgos:/usr/share/nginx/www/multirom/"
+BASE_ADDR = "http://46.28.111.65/multirom/"
 MULTIROM_DIR = "/home/tassadar/nexus/multirom/"
 CONFIG_JSON = MULTIROM_DIR + "config.json"
 
