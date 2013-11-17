@@ -14,47 +14,46 @@ if [ $(whoami) != "root" ]; then
 fi
 
 if [ "$#" -lt "1" ]; then
-    echo "Usage $0 DEVICE"
+    echo "Usage $0 DEVICE [--userdata]"
     exit 1
 fi
 
-DEVICE="$1"
-case $DEVICE in
-    grouper|tilapia)
-        BOOT_DEV="/dev/block/platform/sdhci-tegra.3/by-name/LNX"
-        SYS_DEV="/dev/block/platform/sdhci-tegra.3/by-name/APP"
-        CHECK_NAMES="grouper tilapia"
-        ;;
-    flo|deb)
-        BOOT_DEV="/dev/block/platform/msm_sdcc.1/by-name/boot"
-        SYS_DEV="/dev/block/platform/msm_sdcc.1/by-name/system"
-        CHECK_NAMES="flo deb"
-        ;;
-    *)
-        echo "Unknown device \"$DEVICE\"!"
-        exit 1
-        ;;
-esac
+IMAGES="system"
+for arg in "$@"; do
+    case $arg in
+        grouper|tilapia)
+            DEVICE="$arg"
+            BOOT_DEV="/dev/block/platform/sdhci-tegra.3/by-name/LNX"
+            SYS_DEV="/dev/block/platform/sdhci-tegra.3/by-name/APP"
+            CHECK_NAMES="grouper tilapia"
+            ;;
+        flo|deb)
+            DEVICE="$arg"
+            BOOT_DEV="/dev/block/platform/msm_sdcc.1/by-name/boot"
+            SYS_DEV="/dev/block/platform/msm_sdcc.1/by-name/system"
+            CHECK_NAMES="flo deb"
+            ;;
+        mako)
+            DEVICE="$arg"
+            BOOT_DEV="/dev/block/platform/msm_sdcc.1/by-name/boot"
+            SYS_DEV="/dev/block/platform/msm_sdcc.1/by-name/system"
+            CHECK_NAMES="mako"
+            ;;
+
+        --userdata)
+            IMAGES="${IMAGES} userdata"
+            ;;
+        *)
+            echo "Unknown arg \"$arg\""
+            exit 1
+            ;;
+    esac
+done
 
 if [ ! -f "boot.img" ]; then
     echo "boot.img not found!"
     exit 1
 fi
-
-if [ ! -f "system-mod.img" ]; then
-    if [ ! -f "system.img" ]; then
-        echo "system.img was not found in this folder!"
-        exit 1
-    fi
-
-    echo "Converting system.img to normal image..."
-    simg2img system.img system-mod.img
-fi
-
-mkdir -p system
-umount system &> /dev/null
-
-mount -o loop -t ext4 system-mod.img system || fail "Mount failed!"
 
 echo "Creating package..."
 rm -rf package &> /dev/null
@@ -62,10 +61,28 @@ mkdir -p package/rom
 cp -a ${PKG_TEMPLATE}/* package/
 
 
-echo "Creating tar with system files..."
-cd system
-tar -cz --numeric-owner -f ../package/rom/system.tar.gz ./*
-cd ..
+for img in $IMAGES; do
+    mkdir -p "mnt_images/$img"
+    umount "mnt_images/$img" &> /dev/null
+
+    if [ ! -f "$img-mod.img" ]; then
+        if [ ! -f "$img.img" ]; then
+            echo "$img.img was not found in this folder!"
+            exit 1
+        fi
+
+        echo "Converting $img.img to normal image..."
+        simg2img $img.img $img-mod.img
+    fi
+
+    mount -o loop -t ext4 $img-mod.img mnt_images/$img || fail "Mount failed!"
+
+    echo "Creating tar with $img files..."
+    cd mnt_images/$img
+    tar -cz --numeric-owner -f ../../package/rom/$img.tar.gz ./*
+    cd ../..
+done
+
 
 echo "Processing boot.img..."
 cp boot.img package/
@@ -116,7 +133,11 @@ cd package
 zip -r0 ../${DEVICE}_${ver#-}.zip ./* || fail "Failed to create ZIP file!"
 cd ..
 
-umount system
+umount mnt_images/system &> /dev/null
+umount mnt_images/userdata &> /dev/null
+rmdir mnt_images/system &> /dev/null
+rmdir mnt_images/userdata &> /dev/null
+rmdir mnt_images &> /dev/null
 
 echo
 echo "ZIP \"$name\" was successfuly created!"
