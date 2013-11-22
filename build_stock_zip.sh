@@ -118,7 +118,10 @@ echo 'ui_print("Extracting boot.img...");' >> $SCRIPT_PATH
 echo "package_extract_file(\"boot.img\", \"${BOOT_DEV}\");" >> $SCRIPT_PATH
 
 echo 'ui_print("Setting xattrs...");' >> $SCRIPT_PATH
-gen_android_metadata system >> $SCRIPT_PATH || fail "Failed to generate metadata!"
+cd mnt_images
+# must be "gen_android_metadata system", always - it writes the path into updater-script!
+gen_android_metadata system >> ../$SCRIPT_PATH || fail "Failed to generate metadata!"
+cd ..
 
 echo 'unmount("/system");' >> $SCRIPT_PATH
 echo 'ui_print("Installation complete!");' >> $SCRIPT_PATH
