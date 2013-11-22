@@ -13,6 +13,9 @@ CONFIG_JSON = MULTIROM_DIR + "config.json"
 REGEXP_MULTIROM = re.compile('^multirom-[0-9]{8}-v([0-9]{1,3})([a-z]?)-[a-z]*\.zip$')
 REGEXP_RECOVERY = re.compile('^TWRP_multirom_[a-z]*_([0-9]{8})(-[0-9]{2})?\.img$')
 
+opt_verbose = False
+opt_dry_run = False
+
 # config.json example:
 #{
 #    "devices": [
@@ -84,6 +87,11 @@ class Utils:
         if p.returncode != 0:
             raise Exception("rsync has failed:\n" + stderr)
 
+    @staticmethod
+    def v(txt):
+        if opt_verbose:
+            print txt
+
 
 def get_multirom_file(path, symlinks):
     ver = [ 0, 0, "" ]
@@ -107,6 +115,7 @@ def get_multirom_file(path, symlinks):
     if ver[0] == 0:
         raise Exception("No multirom zip found in folder " + path)
 
+    Utils.v("    MultiROM: " + ver[2]);
     symlinks.append(ver[2])
 
     return {
@@ -140,6 +149,7 @@ def get_recovery_file(path, symlinks):
     if not ver[1]:
         raise Exception("No recovery image found in folder " + path)
 
+    Utils.v("    Recovery: " + ver[2]);
     symlinks.append(ver[2])
 
     return {
@@ -163,8 +173,11 @@ def generate(readable_json):
     symlinks = { }
 
     for dev in config["devices"]:
+        Utils.v("Device " + dev["name"] + ":")
+
         man_dev = { "name": dev["name"] }
         if "ubuntu_touch" in dev:
+            Utils.v("    ubuntu_touch: " + str(dev["ubuntu_touch"]))
             man_dev["ubuntu_touch"] = dev["ubuntu_touch"]
 
         symlinks[dev["name"]] = []
@@ -190,9 +203,16 @@ def generate(readable_json):
                 man_dev["changelogs"].append(man_c)
                 symlinks[dev["name"]].append(c["file"])
 
+        if opt_verbose:
+            Utils.v("    files:")
+            for f in files:
+                Utils.v("      " + str(f))
 
         man_dev["files"] = files
         manifest["devices"].append(man_dev)
+
+    if opt_dry_run:
+        return
 
     # Remove old manifest and symlinks
     os.system("rm \"" + MULTIROM_DIR + "/release/\"*")
@@ -223,8 +243,13 @@ def print_usage(name):
     print "  --no-upload                Don't upload anything, just generate"
     print "  --no-gen-manifest          Don't generate anything, just rsync current files"
     print "  -h, --readable-json        Generate JSON manifest in human-readable form"
+    print "  -v, --verbose              Print more info"
+    print "  -n, --dry-run              Don't change/upload anything. turns on --verbose and --no-upload"
 
 def main(argc, argv):
+    global opt_verbose
+    global opt_dry_run
+
     i = 1
     gen_manifest = True
     upload_files = True
@@ -237,6 +262,12 @@ def main(argc, argv):
             gen_manifest = False
         elif argv[i] == "-h" or argv[i] == "--readable-json":
             readable_json = True
+        elif argv[i] == "-v" or argv[i] == "--verbose":
+            opt_verbose = True
+        elif argv[i] == "-n" or argv[i] == "--dry-run":
+            opt_dry_run = True
+            opt_verbose = True
+            upload_files = False
         else:
             print_usage(argv[0]);
             return 0
@@ -247,6 +278,8 @@ def main(argc, argv):
 
     if upload_files:
         upload()
+
+    return 0
 
 if __name__ == "__main__":
    exit(main(len(sys.argv), sys.argv))
