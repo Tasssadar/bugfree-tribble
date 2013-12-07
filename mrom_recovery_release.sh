@@ -27,7 +27,8 @@ case $TARGET_DEVICE in
 esac
 
 DEST_DIR="/home/tassadar/nexus/multirom/$TAG/"
-IMG_PATH="/home/tassadar/android/android-repo-cm/out/target/product/$TAG/recovery.img"
+IMG_PATH="/home/tassadar/android/android-repo-om/out/target/product/$TAG/recovery.img"
+
 if [ "$RECOVERY_SUBVER" == "" ]; then
     RECOVERY_SUBVER="00"
 fi
