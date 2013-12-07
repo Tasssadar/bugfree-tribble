@@ -17,7 +17,6 @@
 static struct vfs_cap_data cap_data;
 static uint64_t cap;
 static ssize_t r;
-static const i = 1;
 static char buff[2048];
 
 static int read_xattrs(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
@@ -28,7 +27,6 @@ static int read_xattrs(const char *fpath, const struct stat *sb, int typeflag, s
     printf("set_metadata(\"/%s\"", fpath);
 
     // caps
-    memset(&cap_data, 0, sizeof(cap_data));
     r = lgetxattr(fpath, XATTR_NAME_CAPS, &cap_data, sizeof(cap_data));
     if(r == sizeof(cap_data))
     {
@@ -42,7 +40,7 @@ static int read_xattrs(const char *fpath, const struct stat *sb, int typeflag, s
 
     // selinux
     buff[0] = 0;
-    r = lgetxattr(fpath, XATTR_NAME_SELINUX, buff, 2048);
+    r = lgetxattr(fpath, XATTR_NAME_SELINUX, buff, sizeof(buff));
     if(r > 0)
         printf(", \"selabel\", \"%s\"", buff);
 
@@ -58,5 +56,5 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    return nftw(argv[i], read_xattrs, 30, FTW_PHYS);
+    return nftw(argv[1], read_xattrs, 30, FTW_PHYS);
 }
