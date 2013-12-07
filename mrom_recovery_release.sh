@@ -1,25 +1,30 @@
 #!/bin/sh
 TMP="/tmp/"
 
-if [ "$TARGET_PRODUCT" = "cm_flo" ]; then
-    TAG="flo"
-    OTHER="deb"
-    CMPR="lzma"
-    DCMPR="lzcat"
-elif [ "$TARGET_PRODUCT" = "cm_grouper" ]; then
-    TAG="grouper"
-    OTHER="tilapia"
-    CMPR="gzip"
-    DCMPR="zcat"
-elif [ "$TARGET_PRODUCT" = "cm_mako" ]; then
-    TAG="mako"
-    OTHER=""
-    CMPR="gzip"
-    DCMPR="zcat"
-else
-    echo Unknown device: $TARGET_PRODUCT
-    exit 1
+if [ -z "$TARGET_DEVICE" ]; then
+    TARGET_DEVICE=$(basename $OUT)
 fi
+
+case $TARGET_DEVICE in
+    flo)
+        TAG="flo"
+        OTHER="deb"
+        CMPR="lzma"
+        DCMPR="lzcat"
+        ;;
+    grouper)
+        TAG="grouper"
+        OTHER="tilapia"
+        CMPR="gzip"
+        DCMPR="zcat"
+        ;;
+    *)
+        TAG="$TARGET_DEVICE"
+        OTHER=""
+        CMPR="gzip"
+        DCMPR="zcat"
+        ;;
+esac
 
 DEST_DIR="/home/tassadar/nexus/multirom/$TAG/"
 IMG_PATH="/home/tassadar/android/android-repo-cm/out/target/product/$TAG/recovery.img"

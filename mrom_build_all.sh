@@ -1,6 +1,6 @@
 #!/bin/bash
 DEST_DIR="/home/tassadar/nexus/multirom"
-TARGETS="cm_grouper-userdebug cm_flo-userdebug cm_mako-userdebug"
+TARGETS="omni_grouper-userdebug omni_flo-userdebug omni_mako-userdebug omni_hammerhead-userdebug"
 
 API_KEY="--"
 APP_ID="--"
@@ -25,7 +25,7 @@ recovery_patch="00"
 for a in $@; do
     case $a in
         -h|--help)
-            echo "$0 [nobuild] [noclean] [nodhst] [nogoo] [device=mako|grouper|flo] [forceupload] [noupload] [forcesync] [nosync] [recovery] [multirom] [recovery_patch=00-59]"
+            echo "$0 [nobuild] [noclean] [nodhst] [nogoo] [device=mako|grouper|flo|hammerhead] [forceupload] [noupload] [forcesync] [nosync] [recovery] [multirom] [recovery_patch=00-59]"
             exit 0
             ;;
         nobuild)
@@ -38,7 +38,7 @@ for a in $@; do
             nodhst="true"
             ;;
         device=*)
-            build_spec="cm_${a#device=}-userdebug"
+            build_spec="omni_${a#device=}-userdebug"
             ;;
         forceupload)
             forceupload="true"
