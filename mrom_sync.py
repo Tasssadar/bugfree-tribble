@@ -175,6 +175,10 @@ def generate(readable_json):
     for dev in config["devices"]:
         Utils.v("Device " + dev["name"] + ":")
 
+        if "active" in dev and dev["active"] == False:
+            Utils.v("    active: false");
+            continue
+
         man_dev = { "name": dev["name"] }
         if "ubuntu_touch" in dev:
             Utils.v("    ubuntu_touch: " + str(dev["ubuntu_touch"]))
