@@ -92,6 +92,11 @@ class Utils:
         if opt_verbose:
             print txt
 
+    @staticmethod
+    def str_insert(orig, new, pos):
+        if pos < 0:
+            pos = len(orig) + pos
+        return orig[:pos] + new + orig[pos:]
 
 def get_multirom_file(path, symlinks):
     ver = [ 0, 0, "" ]
@@ -240,15 +245,29 @@ def upload():
     Utils.rsync(join(MULTIROM_DIR, "release") + "/", RSYNC_ADDR)
     Utils.rsync(join(MULTIROM_DIR, "release", MANIFEST_NAME), MANIFEST_ADDR + MANIFEST_NAME)
 
+def insert_suffix(suffix):
+    global MANIFEST_NAME
+    global BASE_ADDR
+    global RSYNC_ADDR
+
+    if MANIFEST_NAME.endswith(".json"):
+        MANIFEST_NAME = Utils.str_insert(MANIFEST_NAME, suffix, -5)
+    else:
+        MANIFEST_NAME += suffix
+
+    BASE_ADDR = Utils.str_insert(BASE_ADDR, suffix, -1)
+    RSYNC_ADDR = Utils.str_insert(RSYNC_ADDR, suffix, -1)
+
 def print_usage(name):
     print "Usage: " + name + " [switches]";
     print "\nSwitches:"
-    print "  --help                     Print this help"
-    print "  --no-upload                Don't upload anything, just generate"
-    print "  --no-gen-manifest          Don't generate anything, just rsync current files"
-    print "  -h, --readable-json        Generate JSON manifest in human-readable form"
-    print "  -v, --verbose              Print more info"
-    print "  -n, --dry-run              Don't change/upload anything. turns on --verbose and --no-upload"
+    print "  --help                             Print this help"
+    print "  --no-upload                        Don't upload anything, just generate"
+    print "  --no-gen-manifest                  Don't generate anything, just rsync current files"
+    print "  -h, --readable-json                Generate JSON manifest in human-readable form"
+    print "  -v, --verbose                      Print more info"
+    print "  -n, --dry-run                      Don't change/upload anything. turns on --verbose and --no-upload"
+    print "  -s <suffix>, --suffix=<suffix>     Append suffix to upload folder name and manifest name"
 
 def main(argc, argv):
     global opt_verbose
@@ -272,10 +291,19 @@ def main(argc, argv):
             opt_dry_run = True
             opt_verbose = True
             upload_files = False
+        elif argv[i] == "-s" and i+1 < argc:
+            i += 1
+            insert_suffix(argv[i])
+        elif argv[i].startswith("--suffix="):
+            insert_suffix(argv[i][9:])
         else:
             print_usage(argv[0]);
             return 0
         i += 1
+
+    Utils.v("MANIFEST_NAME: " + MANIFEST_NAME);
+    Utils.v("BASE_ADDR: " + BASE_ADDR);
+    Utils.v("RSYNC_ADDR: " + RSYNC_ADDR);
 
     if gen_manifest:
         generate(readable_json)
