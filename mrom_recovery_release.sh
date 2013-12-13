@@ -29,7 +29,7 @@ esac
 DEST_DIR="/home/tassadar/nexus/multirom/$TAG/"
 IMG_PATH="/home/tassadar/android/android-repo-om/out/target/product/$TAG/recovery.img"
 
-if [ "$RECOVERY_SUBVER" == "" ]; then
+if [ "$RECOVERY_SUBVER" = "" ]; then
     RECOVERY_SUBVER="00"
 fi
 
@@ -41,6 +41,12 @@ else
     DEST_NAME="TWRP_multirom_${TAG}_$(date +%Y%m%d).img"
 fi
 
+if [ "$AUTO_PATCH_INCREMENT" = "true" ]; then
+    while [ -f "$DEST_DIR/$DEST_NAME" ] && [ "$RECOVERY_SUBVER" -lt "60" ]; do
+        RECOVERY_SUBVER=$(printf "%02d" $((RECOVERY_SUBVER+1)) )
+        DEST_NAME="TWRP_multirom_${TAG}_$(date +%Y%m%d)-$RECOVERY_SUBVER.img"
+    done
+fi
 
 if [ -d "$TMP/mrom_recovery_release" ]; then
     rm -r $TMP/mrom_recovery_release || exit 1
