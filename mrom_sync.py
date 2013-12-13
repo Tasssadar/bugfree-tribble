@@ -263,6 +263,16 @@ def insert_suffix(suffix):
     RSYNC_ADDR = Utils.str_insert(RSYNC_ADDR, suffix, -1)
     RELEASE_DIR += suffix
 
+def lock_suffix():
+    path = join(MULTIROM_DIR, RELEASE_DIR, ".lock")
+    open(path, 'a').close()
+    print "Lock \"" + path + "\" was created."
+
+def unlock_suffix():
+    path = join(MULTIROM_DIR, RELEASE_DIR, ".lock")
+    os.remove(path)
+    print "Lock \"" + path + "\" was removed."
+
 def print_usage(name):
     print "Usage: " + name + " [switches]";
     print "\nSwitches:"
@@ -273,6 +283,8 @@ def print_usage(name):
     print "  -v, --verbose                      Print more info"
     print "  -n, --dry-run                      Don't change/upload anything. turns on --verbose and --no-upload"
     print "  -s <suffix>, --suffix=<suffix>     Append suffix to upload folder name and manifest name"
+    print "  -l, --lock                         Locks this suffix and does nothing else"
+    print "  -u, --unlock                       Unlocks this suffix and does nothing else"
 
 def main(argc, argv):
     global opt_verbose
@@ -282,6 +294,8 @@ def main(argc, argv):
     gen_manifest = True
     upload_files = True
     readable_json = False
+    lock = False
+    unlock = False
 
     while i < argc:
         if argv[i] == "--no-upload":
@@ -301,6 +315,14 @@ def main(argc, argv):
             insert_suffix(argv[i])
         elif argv[i].startswith("--suffix="):
             insert_suffix(argv[i][9:])
+        elif argv[i] == "-l" or argv[i] == "--lock":
+            lock = True
+            upload_files = False
+            gen_manifest = False
+        elif argv[i] == "-u" or argv[i] == "--unlock":
+            unlock = True
+            upload_files = False
+            gen_manifest = False
         else:
             print_usage(argv[0]);
             return 0
@@ -310,11 +332,22 @@ def main(argc, argv):
     Utils.v("BASE_ADDR: " + BASE_ADDR);
     Utils.v("RSYNC_ADDR: " + RSYNC_ADDR);
 
-    if gen_manifest:
-        generate(readable_json)
+    if lock:
+        lock_suffix()
+    elif unlock:
+        unlock_suffix()
+    else:
+        lock_path = join(MULTIROM_DIR, RELEASE_DIR, ".lock")
+        if os.path.exists(lock_path):
+            print "Lock \"" + lock_path + "\" exists!"
+            print "Run this script with -u argument to unlock it."
+            return 1
 
-    if upload_files:
-        upload()
+        if gen_manifest:
+            generate(readable_json)
+
+        if upload_files:
+            upload()
 
     return 0
 
