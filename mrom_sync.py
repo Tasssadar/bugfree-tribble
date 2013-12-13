@@ -5,10 +5,11 @@ from datetime import datetime
 
 MANIFEST_ADDR = "saffron:/var/www/"
 MANIFEST_NAME = "multirom_manifest.json"
-RSYNC_ADDR = "kalecgos:/usr/share/nginx/www/multirom/"
-BASE_ADDR = "http://46.28.111.65/multirom/"
+RSYNC_ADDR = "tasemnice:/usr/share/nginx/www/multirom/"
+BASE_ADDR = "http://tasemnice.eu/multirom/"
 MULTIROM_DIR = "/home/tassadar/nexus/multirom/"
 CONFIG_JSON = MULTIROM_DIR + "config.json"
+RELEASE_DIR = "release"
 
 REGEXP_MULTIROM = re.compile('^multirom-[0-9]{8}-v([0-9]{1,3})([a-z]?)-[a-z]*\.zip$')
 REGEXP_RECOVERY = re.compile('^TWRP_multirom_[a-z]*_([0-9]{8})(-[0-9]{2})?\.img$')
@@ -224,10 +225,12 @@ def generate(readable_json):
         return
 
     # Remove old manifest and symlinks
-    os.system("rm \"" + MULTIROM_DIR + "/release/\"*")
+    release_path = join(MULTIROM_DIR, RELEASE_DIR)
+    os.system("mkdir -p \"" + release_path + "\"")
+    os.system("rm -f \"" + release_path + "/\"*")
 
     # write manifest
-    with open(join(MULTIROM_DIR, "release", MANIFEST_NAME), "w") as f:
+    with open(join(MULTIROM_DIR, RELEASE_DIR, MANIFEST_NAME), "w") as f:
         if readable_json:
             json.dump(manifest, f, indent=4, separators=(',', ': '))
         else:
@@ -237,18 +240,19 @@ def generate(readable_json):
     # create symlinks
     for dev in symlinks.keys():
         for f in symlinks[dev]:
-            os.symlink(join("..", dev, f), join(MULTIROM_DIR, "release", f))
+            os.symlink(join("..", dev, f), join(MULTIROM_DIR, RELEASE_DIR, f))
 
 
 def upload():
     print "Uploading files..."
-    Utils.rsync(join(MULTIROM_DIR, "release") + "/", RSYNC_ADDR)
-    Utils.rsync(join(MULTIROM_DIR, "release", MANIFEST_NAME), MANIFEST_ADDR + MANIFEST_NAME)
+    Utils.rsync(join(MULTIROM_DIR, RELEASE_DIR) + "/", RSYNC_ADDR)
+    Utils.rsync(join(MULTIROM_DIR, RELEASE_DIR, MANIFEST_NAME), MANIFEST_ADDR + MANIFEST_NAME)
 
 def insert_suffix(suffix):
     global MANIFEST_NAME
     global BASE_ADDR
     global RSYNC_ADDR
+    global RELEASE_DIR
 
     if MANIFEST_NAME.endswith(".json"):
         MANIFEST_NAME = Utils.str_insert(MANIFEST_NAME, suffix, -5)
@@ -257,6 +261,7 @@ def insert_suffix(suffix):
 
     BASE_ADDR = Utils.str_insert(BASE_ADDR, suffix, -1)
     RSYNC_ADDR = Utils.str_insert(RSYNC_ADDR, suffix, -1)
+    RELEASE_DIR += suffix
 
 def print_usage(name):
     print "Usage: " + name + " [switches]";
