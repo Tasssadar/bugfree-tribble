@@ -55,7 +55,7 @@ mkdir $TMP/mrom_recovery_release
 cd $TMP/mrom_recovery_release
 
 cp -a $IMG_PATH ./
-abootimg -x ./$(basename "$IMG_PATH")
+bbootimg -x ./$(basename "$IMG_PATH")
 
 if [ -n "$OTHER" ]; then
     mkdir init
@@ -70,7 +70,7 @@ if [ -n "$OTHER" ]; then
 fi
 
 grep -v "bootsize" bootimg.cfg > bootimg-new.cfg
-abootimg --create "$DEST_DIR/$DEST_NAME" -f bootimg-new.cfg -c "name = mrom$(date +%Y%m%d)-$RECOVERY_SUBVER" -k zImage -r initrd.img
+bbootimg --create "$DEST_DIR/$DEST_NAME" -f bootimg-new.cfg -c "name = mrom$(date +%Y%m%d)-$RECOVERY_SUBVER" -k zImage -r initrd.img
 
 rm -r $TMP/mrom_recovery_release
 
