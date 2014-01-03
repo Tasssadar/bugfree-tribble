@@ -3,8 +3,7 @@ import sys, string, os, json, hashlib, time, re, subprocess
 from os.path import isfile, join
 from datetime import datetime
 
-MANIFEST_ADDR = "saffron:/var/www/"
-MANIFEST_NAME = "multirom_manifest.json"
+MANIFEST_NAME = "manifest.json"
 RSYNC_ADDR = "tasemnice:/usr/share/nginx/www/multirom/"
 BASE_ADDR = "http://tasemnice.eu/multirom/"
 MULTIROM_DIR = "/home/tassadar/nexus/multirom/"
@@ -246,18 +245,14 @@ def generate(readable_json):
 def upload():
     print "Uploading files..."
     Utils.rsync(join(MULTIROM_DIR, RELEASE_DIR) + "/", RSYNC_ADDR)
-    Utils.rsync(join(MULTIROM_DIR, RELEASE_DIR, MANIFEST_NAME), MANIFEST_ADDR + MANIFEST_NAME)
 
 def insert_suffix(suffix):
-    global MANIFEST_NAME
     global BASE_ADDR
     global RSYNC_ADDR
     global RELEASE_DIR
 
-    if MANIFEST_NAME.endswith(".json"):
-        MANIFEST_NAME = Utils.str_insert(MANIFEST_NAME, suffix, -5)
-    else:
-        MANIFEST_NAME += suffix
+    if suffix[0] != '-':
+        suffix = '-' + suffix
 
     BASE_ADDR = Utils.str_insert(BASE_ADDR, suffix, -1)
     RSYNC_ADDR = Utils.str_insert(RSYNC_ADDR, suffix, -1)
