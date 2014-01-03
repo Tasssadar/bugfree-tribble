@@ -21,7 +21,7 @@ multiromonly="false"
 noupload="false"
 forcesync="false"
 nosync="false"
-recovery_patch=""
+recovery_patch="00"
 for a in $@; do
     case $a in
         -h|--help)
@@ -117,9 +117,9 @@ for t in $TARGETS; do
 
     if [ "$multiromonly" == "false" ]; then
         do_auto_patch_increment="false"
-        if [ -z "$recovery_patch" ]; then
-            do_auto_patch_increment="true"
-        fi
+#        if [ "$recovery_patch" = "00" ]; then
+#            do_auto_patch_increment="true"
+#        fi
 
         RECOVERY_SUBVER="$recovery_patch" AUTO_PATCH_INCREMENT="$do_auto_patch_increment" mrom_recovery_release.sh || exit 1
 
