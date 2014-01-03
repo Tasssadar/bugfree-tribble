@@ -39,6 +39,12 @@ for arg in "$@"; do
             SYS_DEV="/dev/block/platform/msm_sdcc.1/by-name/system"
             CHECK_NAMES="mako"
             ;;
+        hammerhead)
+            DEVICE="$arg"
+            BOOT_DEV="/dev/block/platform/msm_sdcc.1/by-name/boot"
+            SYS_DEV="/dev/block/platform/msm_sdcc.1/by-name/system"
+            CHECK_NAMES="hammerhead"
+            ;;
 
         --userdata)
             IMAGES="${IMAGES} userdata"
@@ -133,7 +139,7 @@ name="${DEVICE}_${ver#-}.zip"
 
 rm ../$name &> /dev/null
 cd package
-zip -r0 ../${DEVICE}_${ver#-}.zip ./* || fail "Failed to create ZIP file!"
+zip -r0 ../${ver#-}_${DEVICE}.zip ./* || fail "Failed to create ZIP file!"
 cd ..
 
 umount mnt_images/system &> /dev/null
