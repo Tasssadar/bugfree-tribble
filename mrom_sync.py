@@ -99,7 +99,9 @@ class Utils:
         return orig[:pos] + new + orig[pos:]
 
 def get_multirom_file(path, symlinks):
-    ver = [ 0, 0, "" ]
+    ver = [ 0, 0 ]
+    filename = ""
+    size = 0
 
     for f in os.listdir(path):
         if not isfile(join(path, f)):
@@ -115,23 +117,28 @@ def get_multirom_file(path, symlinks):
         if maj > ver[0] or (maj == ver[0] and patch > ver[1]):
             ver[0] = maj
             ver[1] = patch
-            ver[2] = f
+            filename = f
+            size = os.path.getsize(join(path, f))
 
-    if ver[0] == 0:
+    if not filename:
         raise Exception("No multirom zip found in folder " + path)
 
-    Utils.v("    MultiROM: " + ver[2]);
-    symlinks.append(ver[2])
+    Utils.v("    MultiROM: " + filename);
+    symlinks.append(filename)
 
     return {
         "type": "multirom",
         "version": str(ver[0]) + str(ver[1] if ver[1] else ""),
-        "url": BASE_ADDR + ver[2],
-        "md5": Utils.md5sum(join(path, ver[2]))
+        "url": BASE_ADDR + filename,
+        "md5": Utils.md5sum(join(path, filename)),
+        "size": size
     }
 
 def get_recovery_file(path, symlinks):
-    ver = [ datetime.min, "", "" ]
+    ver_date = datetime.min
+    ver_str = ""
+    filename = ""
+    size = 0
 
     for f in os.listdir(path):
         if not isfile(join(path, f)):
@@ -146,22 +153,24 @@ def get_recovery_file(path, symlinks):
             continue
 
         date = datetime.strptime(info["boot_img_hdr"]["name"], "mrom%Y%m%d-%M")
-        if date > ver[0]:
-            ver[0] = date
-            ver[1] = info["boot_img_hdr"]["name"]
-            ver[2] = f
+        if date > ver_date:
+            ver_date = date
+            ver_str = info["boot_img_hdr"]["name"]
+            filename = f
+            size = os.path.getsize(join(path, f))
 
-    if not ver[1]:
+    if not filename:
         raise Exception("No recovery image found in folder " + path)
 
-    Utils.v("    Recovery: " + ver[2]);
-    symlinks.append(ver[2])
+    Utils.v("    Recovery: " + filename);
+    symlinks.append(filename)
 
     return {
         "type": "recovery",
-        "version": ver[1],
-        "url": BASE_ADDR + ver[2],
-        "md5": Utils.md5sum(join(path, ver[2]))
+        "version": ver_str,
+        "url": BASE_ADDR + filename,
+        "md5": Utils.md5sum(join(path, filename)),
+        "size": size
     }
 
 def generate(readable_json):
@@ -198,11 +207,14 @@ def generate(readable_json):
 
         for k in dev["kernels"]:
             symlinks[dev["name"]].append(k["file"])
+
+            path = join(MULTIROM_DIR, dev["name"], k["file"]);
             files.append({
                 "type": "kernel",
                 "version": k["name"],
                 "url": BASE_ADDR + k["file"],
-                "md5": Utils.md5sum(join(MULTIROM_DIR, dev["name"], k["file"]))
+                "md5": Utils.md5sum(path),
+                "size": os.path.getsize(path)
             })
 
         if "changelogs" in dev:
