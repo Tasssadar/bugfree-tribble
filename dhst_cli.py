@@ -105,8 +105,14 @@ class DevHostAPI:
         sys.stdout.write("Uploading file " + f + (" (Replacing file " + file_code + ")" if file_code else "") + " ... ");
         sys.stdout.flush()
 
-        r = requests.post("http://api.d-h.st/upload", files=file,data=parameters)
-        res = results.parse(r.text);
+        while True:
+            try:
+                r = requests.post("http://api.d-h.st/upload", files=file,data=parameters)
+                res = results.parse(r.text);
+            except ConnectionError:
+                print "ConnectionError, retrying..."
+            else:
+                break
 
         if res.file_infos[0].response != "Success":
             print "failed!"
