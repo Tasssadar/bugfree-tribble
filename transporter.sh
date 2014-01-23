@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 PORT=9000
 if [ $# -lt 1 ]; then

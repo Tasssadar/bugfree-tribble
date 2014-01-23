@@ -1,4 +1,5 @@
-if [ $# -eq 0 ] || [ "$1" == "on" ]; then
+#!/bin/sh
+if [ $# -eq 0 ] || [ "$1" = "on" ]; then
     echo "starting access point..."
     ifconfig wlan0 10.10.0.1
     /etc/init.d/isc-dhcp-server restart

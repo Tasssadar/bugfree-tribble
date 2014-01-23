@@ -62,14 +62,14 @@ if [ ! -f "boot.img" ]; then
 fi
 
 echo "Creating package..."
-rm -rf package &> /dev/null
+rm -rf package >word 2>&1
 mkdir -p package/rom
 cp -a ${PKG_TEMPLATE}/* package/
 
 
 for img in $IMAGES; do
     mkdir -p "mnt_images/$img"
-    umount "mnt_images/$img" &> /dev/null
+    umount "mnt_images/$img" >word 2>&1
 
     if [ ! -f "$img-mod.img" ]; then
         if [ ! -f "$img.img" ]; then
@@ -92,7 +92,7 @@ done
 
 echo "Processing boot.img..."
 cp boot.img package/
-rm -rf boot &> /dev/null
+rm -rf boot >word 2>&1
 mkdir boot
 cp boot.img boot/
 cd boot
@@ -137,16 +137,16 @@ echo "Packing into ZIP..."
 ver=$(basename $(pwd) | grep -o --color=never '\-.*');
 name="${DEVICE}_${ver#-}.zip"
 
-rm ../$name &> /dev/null
+rm ../$name >word 2>&1
 cd package
 zip -r0 ../${ver#-}_${DEVICE}.zip ./* || fail "Failed to create ZIP file!"
 cd ..
 
-umount mnt_images/system &> /dev/null
-umount mnt_images/userdata &> /dev/null
-rmdir mnt_images/system &> /dev/null
-rmdir mnt_images/userdata &> /dev/null
-rmdir mnt_images &> /dev/null
+umount mnt_images/system >word 2>&1
+umount mnt_images/userdata >word 2>&1
+rmdir mnt_images/system >word 2>&1
+rmdir mnt_images/userdata >word 2>&1
+rmdir mnt_images >word 2>&1
 
 echo
 echo "ZIP \"$name\" was successfuly created!"
