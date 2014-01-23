@@ -12,4 +12,4 @@ if [ -d "./init" ]; then
 fi
 mkdir init || exit 1
 cd init
-zcat ../initrd.img | cpio -i
+zcat ../initrd.img | cpio -i || lzcat ../initrd.img | cpio -i
