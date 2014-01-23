@@ -27,6 +27,7 @@ case $TARGET_DEVICE in
 esac
 
 DEST_DIR="/home/tassadar/nexus/multirom/$TAG/"
+DEST_DIR_OTHER="/home/tassadar/nexus/multirom/$OTHER/"
 IMG_PATH="/home/tassadar/android/android-repo-om/out/target/product/$TAG/recovery.img"
 
 if [ "$RECOVERY_SUBVER" = "" ]; then
@@ -55,23 +56,42 @@ mkdir $TMP/mrom_recovery_release
 cd $TMP/mrom_recovery_release
 
 cp -a $IMG_PATH ./
-bbootimg -x ./$(basename "$IMG_PATH")
 
 if [ -n "$OTHER" ]; then
+    bbootimg -x ./$(basename "$IMG_PATH") &> /dev/null || exit 1
+
     mkdir init
     cd init
-    $DCMPR ../initrd.img | cpio -i
-    sed -e "s/ro.build.product=$TAG/ro.build.product=$OTHER/g" default.prop > ../default.prop
-    mv ../default.prop default.prop
-
+    $DCMPR ../initrd.img | cpio -i &> /dev/null
+    sed -i -e "s/ro.build.product=$TAG/ro.build.product=$OTHER/g" default.prop
+    sed -i -e "s/ro.product.device=$TAG/ro.product.device=$OTHER/g" default.prop
 
     find | sort | cpio --quiet -o -H newc | $CMPR > ../initrd.img
     cd ..
+
+    DEST_NAME_OTHER="TWRP_multirom_${OTHER}_$(date +%Y%m%d)"
+    if [ "$RECOVERY_SUBVER" != "00" ]; then
+        DEST_NAME_OTHER="${DEST_NAME_OTHER}-${RECOVERY_SUBVER}.img"
+    else
+        DEST_NAME_OTHER="${DEST_NAME_OTHER}.img"
+    fi
+
+    grep -v "bootsize" bootimg.cfg > bootimg-new.cfg
+    bbootimg --create "$DEST_DIR_OTHER/$DEST_NAME_OTHER" -f bootimg-new.cfg -c "name = mrom$(date +%Y%m%d)-$RECOVERY_SUBVER" -k zImage -r initrd.img &> /dev/null || exit 1
+    if [ "$PRINT_FILES" = "true" ]; then
+        printf "${DEST_DIR_OTHER}${DEST_NAME_OTHER} "
+    else
+        md5sum "$DEST_DIR_OTHER/$DEST_NAME_OTHER"
+    fi
 fi
 
-grep -v "bootsize" bootimg.cfg > bootimg-new.cfg
-bbootimg --create "$DEST_DIR/$DEST_NAME" -f bootimg-new.cfg -c "name = mrom$(date +%Y%m%d)-$RECOVERY_SUBVER" -k zImage -r initrd.img
+bbootimg -u $(basename "$IMG_PATH") -c "name = mrom$(date +%Y%m%d)-$RECOVERY_SUBVER" &> /dev/null || exit 1
+cp ./$(basename "$IMG_PATH") "${DEST_DIR}/$DEST_NAME"
 
 rm -r $TMP/mrom_recovery_release
 
-md5sum "$DEST_DIR/$DEST_NAME"
+if [ "$PRINT_FILES" = "true" ]; then
+    printf "${DEST_DIR}${DEST_NAME}\n"
+else
+    md5sum "$DEST_DIR/$DEST_NAME"
+fi

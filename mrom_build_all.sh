@@ -117,18 +117,18 @@ for t in $TARGETS; do
 
     if [ "$multiromonly" == "false" ]; then
         do_auto_patch_increment="false"
-#        if [ "$recovery_patch" = "00" ]; then
-#            do_auto_patch_increment="true"
-#        fi
-
-        RECOVERY_SUBVER="$recovery_patch" AUTO_PATCH_INCREMENT="$do_auto_patch_increment" mrom_recovery_release.sh || exit 1
-
-        patch=""
-        if [ "$recovery_patch" != "00" ]; then
-            patch="-$recovery_patch"
+        if [ "$recovery_patch" = "00" ]; then
+            do_auto_patch_increment="true"
         fi
 
-        upload="${upload} $DEST_DIR/$TARGET_DEVICE/TWRP_multirom_${TARGET_DEVICE}_$(date +%Y%m%d)${patch}.img"
+        files="$(RECOVERY_SUBVER="$recovery_patch" AUTO_PATCH_INCREMENT="$do_auto_patch_increment" PRINT_FILES="true" mrom_recovery_release.sh)"
+
+        if [ "$?" != "0" ]; then
+            echo "mrom_recovery_release.sh failed!"
+            exit 1
+        fi
+
+        upload="${upload} ${files}"
         upload_devs="${upload_devs} ${TARGET_DEVICE}"
     fi
 

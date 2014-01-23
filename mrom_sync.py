@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import sys, string, os, json, hashlib, time, re, subprocess
+import sys, string, os, json, hashlib, time, re, subprocess, copy
 from os.path import isfile, join
 from datetime import datetime
 
@@ -11,7 +11,7 @@ CONFIG_JSON = MULTIROM_DIR + "config.json"
 RELEASE_DIR = "release"
 
 REGEXP_MULTIROM = re.compile('^multirom-[0-9]{8}-v([0-9]{1,3})([a-z]?)-[a-z]*\.zip$')
-REGEXP_RECOVERY = re.compile('^TWRP_multirom_[a-z]*_([0-9]{8})(-[0-9]{2})?\.img$')
+REGEXP_RECOVERY = re.compile('^TWRP_multirom_([a-z]*)_([0-9]{8})(-[0-9]{2})?\.img$')
 
 opt_verbose = False
 opt_dry_run = False
@@ -134,7 +134,7 @@ def get_multirom_file(path, symlinks):
         "size": size
     }
 
-def get_recovery_file(path, symlinks):
+def get_recovery_file(device_name, path, symlinks):
     ver_date = datetime.min
     ver_str = ""
     filename = ""
@@ -145,7 +145,7 @@ def get_recovery_file(path, symlinks):
             continue
 
         match = REGEXP_RECOVERY.match(f)
-        if not match:
+        if not match or match.group(1) != device_name:
             continue
 
         info = Utils.get_bbootimg_info(join(path, f))
@@ -173,6 +173,34 @@ def get_recovery_file(path, symlinks):
         "size": size
     }
 
+def generate_variants(dev, man_dev, symlinks):
+    res = []
+    for var in dev["variants"]:
+        Utils.v("Variant " + var["name"] + " of " + dev["name"] + ":")
+        man_var = copy.deepcopy(man_dev)
+        man_var["name"] = var["name"]
+
+        overrides = var["override"].split("|");
+        Utils.v("    overrides: " + str(overrides))
+
+        symlinks[var["name"]] = []
+
+        if "recovery" in overrides:
+            rec = get_recovery_file(var["name"], join(MULTIROM_DIR, var["name"]), symlinks[var["name"]])
+            for i in range(len(man_var["files"])):
+                if man_var["files"][i]["type"] == "recovery":
+                    man_var["files"][i] = rec
+                    break
+
+        if opt_verbose:
+            Utils.v("    files:")
+            for f in man_var["files"]:
+                Utils.v("      " + str(f))
+
+        res.append(man_var)
+
+    return res
+
 def generate(readable_json):
     print "Generating manifest..."
 
@@ -188,9 +216,8 @@ def generate(readable_json):
 
     for dev in config["devices"]:
         Utils.v("Device " + dev["name"] + ":")
-
         if "active" in dev and dev["active"] == False:
-            Utils.v("    active: false");
+            Utils.v("    active: False");
             continue
 
         man_dev = { "name": dev["name"] }
@@ -202,7 +229,7 @@ def generate(readable_json):
 
         files = [
             get_multirom_file(join(MULTIROM_DIR, dev["name"]), symlinks[dev["name"]]),
-            get_recovery_file(join(MULTIROM_DIR, dev["name"]), symlinks[dev["name"]])
+            get_recovery_file(dev["name"], join(MULTIROM_DIR, dev["name"]), symlinks[dev["name"]])
         ]
 
         for k in dev["kernels"]:
@@ -231,6 +258,9 @@ def generate(readable_json):
 
         man_dev["files"] = files
         manifest["devices"].append(man_dev)
+
+        if "variants" in dev:
+            manifest["devices"].extend(generate_variants(dev, man_dev, symlinks))
 
     if opt_dry_run:
         return
