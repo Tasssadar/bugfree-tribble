@@ -1,10 +1,10 @@
 #!/bin/sh
 
-if [ "$1" == "--help" ]; then
+if [ "$1" = "--help" ]; then
     echo "$0 [on/off]"
     echo "    toggle AMD gpu power state"
     exit 0
-elif [ "$1" == "on" ]; then
+elif [ "$1" = "on" ]; then
     echo "\_SB.PCI0.PEG0.PEGP._ON" > /proc/acpi/call
 else
     echo "\_SB.PCI0.PEG0.PEGP._OFF" > /proc/acpi/call
