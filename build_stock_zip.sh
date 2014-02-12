@@ -5,6 +5,13 @@ SCRIPT_PATH="package/META-INF/com/google/android/updater-script"
 
 fail() {
     echo $1
+
+    for img in $IMAGES; do
+        umount mnt_images/$img >word 2>&1
+        rmdir mnt_images/$img >word 2>&1
+    done
+    rmdir mnt_images >word 2>&1
+
     exit 1
 }
 
@@ -19,6 +26,8 @@ if [ "$#" -lt "1" ]; then
 fi
 
 IMAGES="system"
+UBUNTU_TOUCH=false
+OUT_FILENAME=""
 for arg in "$@"; do
     case $arg in
         grouper|tilapia)
@@ -48,6 +57,12 @@ for arg in "$@"; do
 
         --userdata)
             IMAGES="${IMAGES} userdata"
+            ;;
+        --utouch)
+            UBUNTU_TOUCH=true
+            ;;
+        --out=*)
+            OUT_FILENAME="${arg#--out=}"
             ;;
         *)
             echo "Unknown arg \"$arg\""
@@ -89,18 +104,40 @@ for img in $IMAGES; do
     cd ../..
 done
 
+process_bootimg() {
+    echo "Processing boot.img..."
+    rm -rf boot >word 2>&1
+    mkdir boot
+    cp boot.img boot/
+    cd boot
+    extract_bootimg.sh boot.img > /dev/null || fail "Failed to extract boot image!"
+    cp init/file_contexts ../package/ || fail "Failed to copy file_contexts!"
+    cd ..
+    rm -r boot
+}
 
-echo "Processing boot.img..."
+process_initrd() {
+    echo "processing initrd.img"
+    rm -rf init >word 2>&1
+    mkdir init
+    cd init
+    zcat ../initrd.img | cpio -i
+    cp file_contexts ../package/ || fail "Failed to copy file_contexts!"
+    cd ..
+    rm -r init
+}
+
 cp boot.img package/
-rm -rf boot >word 2>&1
-mkdir boot
-cp boot.img boot/
-cd boot
-extract_bootimg.sh boot.img > /dev/null || fail "Failed to extract boot image!"
-cp init/file_contexts ../package/ || fail "Failed to copy file_contexts!"
-cd ..
-rm -r boot
 
+if $UBUNTU_TOUCH; then
+    cp mnt_images/system/boot/android-ramdisk.img ./initrd.img
+fi
+
+if [ -f "initrd.img" ]; then
+    process_initrd
+else
+    process_bootimg
+fi
 
 echo "Creating script..."
 
@@ -134,19 +171,22 @@ echo 'ui_print("Installation complete!");' >> $SCRIPT_PATH
 
 
 echo "Packing into ZIP..."
-ver=$(basename $(pwd) | grep -o --color=never '\-.*');
-name="${DEVICE}_${ver#-}.zip"
+if [ -z "$OUT_FILENAME" ]; then
+    ver=$(basename $(pwd) | grep -o --color=never '\-.*');
+    OUT_FILENAME="../${ver#-}_${DEVICE}.zip"
+fi
 
-rm ../$name >word 2>&1
+rm "$OUT_FILENAME" >word 2>&1
 cd package
-zip -r0 ../${ver#-}_${DEVICE}.zip ./* || fail "Failed to create ZIP file!"
+zip -r0 "$OUT_FILENAME" ./* || fail "Failed to create ZIP file!"
 cd ..
 
-umount mnt_images/system >word 2>&1
-umount mnt_images/userdata >word 2>&1
-rmdir mnt_images/system >word 2>&1
-rmdir mnt_images/userdata >word 2>&1
+for img in $IMAGES; do
+    umount mnt_images/$img >word 2>&1
+    rmdir mnt_images/$img >word 2>&1
+done
+
 rmdir mnt_images >word 2>&1
 
 echo
-echo "ZIP \"$name\" was successfuly created!"
+echo "ZIP \"$OUT_FILENAME\" was successfuly created!"
