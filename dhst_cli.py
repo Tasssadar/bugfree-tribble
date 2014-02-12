@@ -96,23 +96,27 @@ class DevHostAPI:
         parameters = { "token":self.session_token, "action":"uploadapi", "public":"1" }
         if folder_id:
             parameters["uploadfolder"] = folder_id;
-        file_code = self.find_file_code(os.path.basename(f), folder_id);
-        if file_code:
-            parameters["file_code[]"] = file_code;
-
-        file = {'files[]':open(f,'r')}
-
-        sys.stdout.write("Uploading file " + f + (" (Replacing file " + file_code + ")" if file_code else "") + " ... ");
-        sys.stdout.flush()
 
         while True:
+            file_code = self.find_file_code(os.path.basename(f), folder_id);
+            if file_code:
+                parameters["file_code[]"] = file_code;
+
+            file = open(f,'r')
+            files_dict = {'files[]':file}
+
+            sys.stdout.write("Uploading file " + f + (" (Replacing file " + file_code + ")" if file_code else "") + " ... ");
+            sys.stdout.flush()
+
             try:
-                r = requests.post("http://api.d-h.st/upload", files=file,data=parameters)
+                r = requests.post("http://api.d-h.st/upload", files=files_dict,data=parameters)
                 res = results.parse(r.text);
-            except ConnectionError:
+            except requests.ConnectionError:
                 print "ConnectionError, retrying..."
             else:
                 break
+            finally:
+                file.close()
 
         if res.file_infos[0].response != "Success":
             print "failed!"
