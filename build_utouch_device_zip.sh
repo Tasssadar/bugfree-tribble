@@ -16,7 +16,7 @@ fail() {
     exit 1
 }
 
-for arg in "$@"; do
+for arg in $@; do
     case $arg in
         http://*|https://*)
             url="${arg}"
