@@ -38,7 +38,7 @@ for a in $@; do
             nodhst="true"
             ;;
         device=*)
-            build_spec="omni_${a#device=}-userdebug"
+            build_spec="$build_spec omni_${a#device=}-userdebug"
             ;;
         forceupload)
             forceupload="true"
@@ -93,8 +93,17 @@ fi
 upload=""
 upload_devs=""
 for t in $TARGETS; do
-    if [ -n "$build_spec" ] && [ "$build_spec" != "$t" ]; then
-        continue
+    if [ -n "$build_spec" ]; then
+        requested=false
+        for spec in $build_spec; do
+            if [ "$t" == "$spec" ]; then
+                requested=true
+                break
+            fi
+        done
+        if ! $requested; then
+            continue
+        fi
     fi
 
     lunch $t
