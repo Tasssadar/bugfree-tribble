@@ -58,12 +58,12 @@ cd $TMP/mrom_recovery_release
 cp -a $IMG_PATH ./
 
 if [ -n "$OTHER" ]; then
-    bbootimg -x ./$(basename "$IMG_PATH") >word 2>&1 || exit 1
+    bbootimg -x ./$(basename "$IMG_PATH") >/dev/null 2>&1 || exit 1
 
     mkdir init
     cd init
 
-    $DCMPR ../initrd.img | cpio -i >word 2>&1
+    $DCMPR ../initrd.img | cpio -i >/dev/null 2>&1
 
     sed -i -e "s/ro.build.product=$TAG/ro.build.product=$OTHER/g" default.prop
     sed -i -e "s/ro.product.device=$TAG/ro.product.device=$OTHER/g" default.prop
@@ -79,7 +79,7 @@ if [ -n "$OTHER" ]; then
     fi
 
     grep -v "bootsize" bootimg.cfg > bootimg-new.cfg
-    bbootimg --create "$DEST_DIR_OTHER/$DEST_NAME_OTHER" -f bootimg-new.cfg -c "name = mrom$(date +%Y%m%d)-$RECOVERY_SUBVER" -k zImage -r initrd.img >word 2>&1 || exit 1
+    bbootimg --create "$DEST_DIR_OTHER/$DEST_NAME_OTHER" -f bootimg-new.cfg -c "name = mrom$(date +%Y%m%d)-$RECOVERY_SUBVER" -k zImage -r initrd.img >/dev/null 2>&1 || exit 1
     if [ "$PRINT_FILES" = "true" ]; then
         printf "${DEST_DIR_OTHER}${DEST_NAME_OTHER} "
     else
@@ -87,7 +87,7 @@ if [ -n "$OTHER" ]; then
     fi
 fi
 
-bbootimg -u $(basename "$IMG_PATH") -c "name = mrom$(date +%Y%m%d)-$RECOVERY_SUBVER" >word 2>&1 || exit 1
+bbootimg -u $(basename "$IMG_PATH") -c "name = mrom$(date +%Y%m%d)-$RECOVERY_SUBVER" >/dev/null 2>&1 || exit 1
 cp ./$(basename "$IMG_PATH") "${DEST_DIR}/$DEST_NAME"
 
 rm -r $TMP/mrom_recovery_release

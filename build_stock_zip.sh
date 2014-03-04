@@ -7,10 +7,10 @@ fail() {
     echo $1
 
     for img in $IMAGES; do
-        umount mnt_images/$img >word 2>&1
-        rmdir mnt_images/$img >word 2>&1
+        umount mnt_images/$img >/dev/null 2>&1
+        rmdir mnt_images/$img >/dev/null 2>&1
     done
-    rmdir mnt_images >word 2>&1
+    rmdir mnt_images >/dev/null 2>&1
 
     exit 1
 }
@@ -77,14 +77,14 @@ if [ ! -f "boot.img" ]; then
 fi
 
 echo "Creating package..."
-rm -rf package >word 2>&1
+rm -rf package >/dev/null 2>&1
 mkdir -p package/rom
 cp -a ${PKG_TEMPLATE}/* package/
 
 
 for img in $IMAGES; do
     mkdir -p "mnt_images/$img"
-    umount "mnt_images/$img" >word 2>&1
+    umount "mnt_images/$img" >/dev/null 2>&1
 
     if [ ! -f "$img-mod.img" ]; then
         if [ ! -f "$img.img" ]; then
@@ -106,7 +106,7 @@ done
 
 process_bootimg() {
     echo "Processing boot.img..."
-    rm -rf boot >word 2>&1
+    rm -rf boot >/dev/null 2>&1
     mkdir boot
     cp boot.img boot/
     cd boot
@@ -118,7 +118,7 @@ process_bootimg() {
 
 process_initrd() {
     echo "processing initrd.img"
-    rm -rf init >word 2>&1
+    rm -rf init >/dev/null 2>&1
     mkdir init
     cd init
     zcat ../initrd.img | cpio -i
@@ -176,17 +176,17 @@ if [ -z "$OUT_FILENAME" ]; then
     OUT_FILENAME="../${ver#-}_${DEVICE}.zip"
 fi
 
-rm "$OUT_FILENAME" >word 2>&1
+rm "$OUT_FILENAME" >/dev/null 2>&1
 cd package
 zip -r0 "$OUT_FILENAME" ./* || fail "Failed to create ZIP file!"
 cd ..
 
 for img in $IMAGES; do
-    umount mnt_images/$img >word 2>&1
-    rmdir mnt_images/$img >word 2>&1
+    umount mnt_images/$img >/dev/null 2>&1
+    rmdir mnt_images/$img >/dev/null 2>&1
 done
 
-rmdir mnt_images >word 2>&1
+rmdir mnt_images >/dev/null 2>&1
 
 echo
 echo "ZIP \"$OUT_FILENAME\" was successfuly created!"
