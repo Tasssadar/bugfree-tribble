@@ -49,6 +49,21 @@ class DevHostAPI:
         self.session_token = info.token
         return 0
 
+    def get_folder_content(self, folder):
+        folder_id = self.get_folder_key_recursive(folder);
+        if not folder_id:
+            return []
+
+        args = { "token":self.session_token, "folder_id": folder_id };
+        res = self.doRequest("http://d-h.st/api/folder/content", args);
+        if res.response != "Success":
+            return []
+
+        file_list=[]
+        for f in res.files:
+           file_list.append({ "name": f.filename, "url": f.download_url })
+        return file_list
+
     def get_folder_key(self, folder, folder_id):
         args = { "token":self.session_token };
         if folder_id:
