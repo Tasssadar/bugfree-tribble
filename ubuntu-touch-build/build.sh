@@ -1,24 +1,34 @@
-#!/bin/sh
+#!/bin/bash
+
+# Must be !/bin/bash because ". build/envsetup.sh" is bash-only!!
 
 set -e
 
 CDIMAGE_PATH="/opt/cdimage"
 TREE_PATH="/opt/ubuntu-touch"
-DEVICES="hammerhead"
+DEVICES="hammerhead deb"
+DEVICES_REQ=""
 SERIES="trusty"
 CLEAN_OUT=true
 FORCE=false
+NOSYNC=false
 
 PATH="/sbin:$PATH"
 
 handle_args() {
     for arg in $1; do
         case $arg in
-            "noclean")
+            noclean)
                 CLEAN_OUT=false
                 ;;
-            "force")
+            force)
                 FORCE=true
+                ;;
+            device=*)
+                DEVICES_REQ="${DEVICES_REQ} ${arg#device=}"
+                ;;
+            nosync)
+                NOSYNC=true
                 ;;
             *)
                 echo "unknown arg $arg"
@@ -27,9 +37,22 @@ handle_args() {
     done
 }
 
+is_device_req() {
+    ([ -n "$DEVICES_REQ" ]) || return 0
+
+    for dev_req in $DEVICES_REQ; do
+        if [ "$dev_req" = "$1" ]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
 build() {
     cd "$TREE_PATH"
-    /home/tassadar/bin/repo sync
+
+    $NOSYNC || /home/tassadar/bin/repo sync
 
     if $CLEAN_OUT; then
         echo "Removing /out/target/"
@@ -39,6 +62,8 @@ build() {
     . build/envsetup.sh
 
     for dev in $DEVICES; do
+        is_device_req $dev || continue
+
         lunch aosp_$dev-userdebug
 
         time make
@@ -66,6 +91,8 @@ copy_images() {
     images_armhf="boot"
     images_armel="recovery system"
     for dev in $DEVICES; do
+        is_device_req $dev || continue
+
         for img in $images_armhf; do
             cp "${TREE_PATH}/out/target/product/${dev}/${img}.img" "./${SERIES}-preinstalled-${img}-armhf+${dev}.img"
         done
@@ -80,6 +107,8 @@ replace_keyring() {
     imgdir="$(pwd)"
 
     for dev in $DEVICES; do
+        is_device_req $dev || continue
+
         tmpdir="$(mktemp -d)"
         recovery_file="${SERIES}-preinstalled-recovery-armel+${dev}.img"
 
@@ -143,7 +172,7 @@ check_pkg_version() {
     fi
 }
 
-handle_args "$@"
+handle_args "$*"
 
 last_build="$(load_last_build_timestamp)"
 build_start="$(date +%s)"
