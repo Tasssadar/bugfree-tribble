@@ -34,6 +34,9 @@ for a in $@; do
         noclean)
             noclean="true"
             ;;
+        nogoo)
+            nogoo="true"
+            ;;
         nodhst)
             nodhst="true"
             ;;
@@ -138,7 +141,10 @@ for t in $TARGETS; do
         fi
 
         upload="${upload} ${files}"
-        upload_devs="${upload_devs} ${TARGET_DEVICE}"
+        # add device for each recovery file
+        for f in $files; do
+            upload_devs="${upload_devs} ${TARGET_DEVICE}"
+        done
     fi
 
     echo ""
