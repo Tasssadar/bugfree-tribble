@@ -10,17 +10,17 @@ if [ -e ~/mrom_cfg.sh ]; then
     . ~/mrom_cfg.sh
 fi
 
-nobuild="false"
-noclean="false"
-nodhst="false"
-nogoo="false"
+nobuild=false
+noclean=false
+nodhst=false
+nogoo=false
 build_spec=""
-forceupload="false"
-recoveryonly="false"
-multiromonly="false"
-noupload="false"
-forcesync="false"
-nosync="false"
+forceupload=false
+recoveryonly=false
+multiromonly=false
+noupload=false
+forcesync=false
+nosync=false
 recovery_patch="00"
 for a in $@; do
     case $a in
@@ -29,37 +29,37 @@ for a in $@; do
             exit 0
             ;;
         nobuild)
-            nobuild="true"
+            nobuild=true
             ;;
         noclean)
-            noclean="true"
+            noclean=true
             ;;
         nogoo)
-            nogoo="true"
+            nogoo=true
             ;;
         nodhst)
-            nodhst="true"
+            nodhst=true
             ;;
         device=*)
             build_spec="$build_spec omni_${a#device=}-userdebug"
             ;;
         forceupload)
-            forceupload="true"
+            forceupload=true
             ;;
         noupload)
-            noupload="true"
+            noupload=true
             ;;
         forcesync)
-            forcesync="true"
+            forcesync=true
             ;;
         nosync)
-            nosync="true"
+            nosync=true
             ;;
         recovery)
-            recoveryonly="true"
+            recoveryonly=true
             ;;
         multirom)
-            multiromonly="true"
+            multiromonly=true
             ;;
         recovery_patch=*)
             recovery_patch="${a#recovery_patch=}"
@@ -76,14 +76,14 @@ if [ "$GOOIM_PASS" != "" ]; then
     gooim_pass_int="$(echo $GOOIM_PASS | base64 -d)"
 fi
 
-if [ "$nodhst" != "true" ]; then
+if ! $nodhst; then
     while [ -z "$dhst_pass_int" ]; do
         echo
         echo -n "Enter your d-h.st password: "
         read -s dhst_pass_int
     done
 fi
-if [ "$nogoo" != "true" ]; then
+if ! $nogoo; then
     while [ -z "$gooim_pass_int" ]; do
         echo
         echo -n "Enter your goo.im password: "
@@ -113,21 +113,21 @@ for t in $TARGETS; do
 
     TARGET_DEVICE=$(basename $OUT)
 
-    if [ "$nobuild" != "true" ]; then
-        if [ "$noclean" != "true" ]; then
+    if ! $nobuild; then
+        if ! $noclean; then
             rm -r "$OUT"
         fi
 
-        if [ "$recoveryonly" == "true" ]; then
+        if $recoveryonly; then
             make -j4 recoveryimage || exit 1
-        elif [ "$multiromonly" == "true" ]; then
+        elif $multiromonly; then
             make -j4 multirom_zip || exit 1
         else
             make -j4 recoveryimage multirom_zip || exit 1
         fi
     fi
 
-    if [ "$multiromonly" == "false" ]; then
+    if ! $multiromonly; then
         do_auto_patch_increment="false"
         if [ "$recovery_patch" = "00" ]; then
             do_auto_patch_increment="true"
@@ -148,7 +148,7 @@ for t in $TARGETS; do
     fi
 
     echo ""
-    if [ "$recoveryonly" == "false" ]; then
+    if ! $recoveryonly; then
         for f in $(ls "$OUT"/multirom-*v*-*.zip*); do
             dest="$DEST_DIR/$TARGET_DEVICE/$(basename "$f" | sed s/-UNOFFICIAL//g)"
 
@@ -163,11 +163,11 @@ for t in $TARGETS; do
     fi
 done
 
-if [ "$nodhst" = "true" ] && [ "$nogoo" = "true" ]; then
-    noupload="true"
+if $nodhst && $nogoo; then
+    noupload=true
 fi
 
-if [ "$noupload" = "true" ]; then
+if $noupload; then
     echo "Upload disabled by cmdline args"
 else
     echo "Do you want to upload these files to d-h.st and goo.im?"
@@ -175,20 +175,20 @@ else
         echo "  $u"
     done
 
-    if [ "$forceupload" != "true" ]; then
+    if ! $forceupload; then
         echo -n "Upload? [y/N]: "
         read upload_files
     else
         echo "Upload forced, proceeding"
     fi
 
-    if [ "$upload_files" = "y" ] || [ "$upload_files" = "Y" ] || [ "$forceupload" = "true" ]; then
+    if [ "$upload_files" = "y" ] || [ "$upload_files" = "Y" ] || $forceupload; then
         echo
 
         upload=($upload)
         upload_devs=($upload_devs)
 
-        if [ "$nodhst" != "true" ]; then
+        if ! $nodhst; then
             echo "Uploading to d-h.st"
             token=$(dhst_cli.py -l "$DHST_LOGIN" -p "$dhst_pass_int" login)
             if [ "$?" != "0" ]; then
@@ -208,7 +208,7 @@ else
             done
         fi
 
-        if [ "$nogoo" != "true" ]; then
+        if ! $nogoo; then
             echo
             echo "Uploading to goo.im..."
             for (( i=0; i<${#upload[@]}; i++ )); do
@@ -229,17 +229,17 @@ else
     fi
 fi
 
-if [ "$nosync" = "true" ]; then
+if $nosync; then
     echo "Sync disabled by cmdline args"
 else
-    if [ "$forcesync" != "true" ]; then
+    if ! $forcesync; then
         echo -n "Sync files to manager? [y/N]: "
         read upload_files
     else
         echo "Upload forced, proceeding"
     fi
 
-    if [ "$upload_files" = "y" ] || [ "$upload_files" = "Y" ] || [ "$forcesync" = "true" ]; then
+    if [ "$upload_files" = "y" ] || [ "$upload_files" = "Y" ] || $forcesync; then
         mrom_sync.py
     fi
 fi
