@@ -244,6 +244,17 @@ def generate(readable_json, status_text):
                 "size": os.path.getsize(path)
             })
 
+        if "uninstaller" in dev:
+            symlinks[dev["name"]].append(dev["uninstaller"])
+            path = join(MULTIROM_DIR, dev["name"], dev["uninstaller"]);
+            files.append({
+                "type": "uninstaller",
+                "version": "",
+                "url": BASE_ADDR + dev["uninstaller"],
+                "md5": Utils.md5sum(path),
+                "size": os.path.getsize(path)
+            })
+
         if "changelogs" in dev:
             man_dev["changelogs"] = []
             for c in dev["changelogs"]:
