@@ -166,6 +166,8 @@ def update_first_post(api, cfg_dev, manifest):
         datetime.datetime.now().strftime("%b %d").upper(),
         m["version"]
     )
+    if "title_summary" in cfg_dev["xda"]:
+        title += " (%s)" % cfg_dev["xda"]["title_summary"]
     api.save_raw_post(post["post_id"], title, post["post_content"].data.replace("\r", ""))
 
 def update_second_post(api, cfg_dev, manifest, dhst_session):
