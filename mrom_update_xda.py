@@ -7,6 +7,7 @@ import string
 import requests
 import dhst_cli
 import xdaapi
+import re
 
 MANIFEST_URL = "http://tasemnice.eu/multirom/manifest.json"
 MULTIROM_DIR = "/home/tassadar/nexus/multirom/"
@@ -45,6 +46,8 @@ class RemoteManifest:
          return False
 
 class SecondPostGenerator():
+    url_re = re.compile("http.?://[^ )\\n]*")
+
     def __init__(self, cfg_dev, manifest, dhst_session):
         self.cfg_dev = cfg_dev
         self.manifest = manifest
@@ -121,6 +124,17 @@ class SecondPostGenerator():
             if c["name"].upper() == ctype:
                 return "%s%s/%s" % ( MULTIROM_DIR, self.cfg_dev["name"], c["file"])
 
+    def convert_urls(self, line):
+        pos = 0
+        while True:
+            m=self.url_re.search(line, pos)
+            if not m:
+                break
+            url = "[url]%s[/url]" % m.group()
+            line = line[:m.start()] + url + line[m.end():]
+            pos = m.start() + len(url)
+        return line
+
     def generate_changelog(self, path):
         with open(path, "r") as f:
             res = "[code]\n"
@@ -129,9 +143,9 @@ class SecondPostGenerator():
                     split_idx = line.rfind(" ", 0, 79)
                     if split_idx < 3:
                         break
-                    res += line[:split_idx] + "\n"
+                    res += self.convert_urls(line[:split_idx]) + "\n"
                     line = "  %s" % line[split_idx+1:]
-                res += line
+                res += self.convert_urls(line)
             res += "[/code]\n"
             return res
 
