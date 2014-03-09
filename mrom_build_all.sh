@@ -14,6 +14,8 @@ nobuild=false
 noclean=false
 nodhst=false
 nogoo=false
+noxda=false
+forcexda=false
 build_spec=""
 forceupload=false
 recoveryonly=false
@@ -25,7 +27,7 @@ recovery_patch=""
 for a in $@; do
     case $a in
         -h|--help)
-            echo "$0 [nobuild] [noclean] [nodhst] [nogoo] [device=mako|grouper|flo|hammerhead] [forceupload] [noupload] [forcesync] [nosync] [recovery] [multirom] [recovery_patch=00-59]"
+            echo "$0 [nobuild] [noclean] [nodhst] [nogoo] [device=mako|grouper|flo|hammerhead] [forceall] [forceupload] [noupload] [forcesync] [nosync] [forcexda] [noxda] [recovery] [multirom] [recovery_patch=00-59]"
             exit 0
             ;;
         nobuild)
@@ -39,6 +41,12 @@ for a in $@; do
             ;;
         nodhst)
             nodhst=true
+            ;;
+        noxda)
+            noxda=true
+            ;;
+        forcexda)
+            forcexda=true;
             ;;
         device=*)
             build_spec="$build_spec omni_${a#device=}-userdebug"
@@ -64,32 +72,46 @@ for a in $@; do
         recovery_patch=*)
             recovery_patch="${a#recovery_patch=}"
             ;;
+        forceall)
+            forcesync=true
+            forceupload=true
+            forcexda=true
+            ;;
     esac
 done
 
-dhst_pass_int=""
-gooim_pass_int=""
-if [ "$DHST_PASS" != "" ]; then
-    dhst_pass_int="$(echo $DHST_PASS | base64 -d)"
-fi
-if [ "$GOOIM_PASS" != "" ]; then
-    gooim_pass_int="$(echo $GOOIM_PASS | base64 -d)"
-fi
+acquire_pass() {
+    if $3; then
+        return 0
+    fi
 
-if ! $nodhst; then
-    while [ -z "$dhst_pass_int" ]; do
-        echo
-        echo -n "Enter your d-h.st password: "
-        read -s dhst_pass_int
+    if [ -n "$2" ]; then
+         echo $2 | base64 -d
+    else
+        res=""
+        while [ -z "$res" ]; do
+            echo
+            echo -n "Enter your $1 password: "
+            read -s res
+        done
+        echo $res
+    fi
+}
+
+get_unique_devices_array() {
+    res=""
+    print $1
+    for dev in $1; do
+        if [[ "$res" != *$dev* ]]; then
+            res="${res} $dev"
+        fi
     done
-fi
-if ! $nogoo; then
-    while [ -z "$gooim_pass_int" ]; do
-        echo
-        echo -n "Enter your goo.im password: "
-        read -s gooim_pass_int
-    done
-fi
+    echo $res
+}
+
+dhst_pass_int="$(acquire_pass "dev-host" $DHST_PASS $nodhst)"
+gooim_pass_int="$(acquire_pass "goo.im" $GOOIM_PASS $nogoo)"
+xda_pass_int="$(acquire_pass "XDA" $XDA_PASS $noxda)"
 
 . build/envsetup.sh
 
@@ -165,6 +187,10 @@ for t in $TARGETS; do
     fi
 done
 
+# convert to array
+upload=($upload)
+upload_devs=($upload_devs)
+
 if $nodhst && $nogoo; then
     noupload=true
 fi
@@ -186,9 +212,6 @@ else
 
     if [ "$upload_files" = "y" ] || [ "$upload_files" = "Y" ] || $forceupload; then
         echo
-
-        upload=($upload)
-        upload_devs=($upload_devs)
 
         if ! $nodhst; then
             echo "Uploading to d-h.st"
@@ -243,5 +266,30 @@ else
 
     if [ "$upload_files" = "y" ] || [ "$upload_files" = "Y" ] || $forcesync; then
         mrom_sync.py
+    fi
+fi
+
+if $noxda; then
+    echo "XDA thread update disabled by cmdline args"
+else
+    if ! $forcexda; then
+        echo -n "Update XDA threads? [y/N]: "
+        read update_xda
+    else
+        echo "XDA Update force, proceeding"
+        update_xda=true
+    fi
+
+    if [ "$update_xda" = "y" ] || [ "$update_xda" = "Y" ]; then
+        token=$(dhst_cli.py -l "$DHST_LOGIN" -p "$dhst_pass_int" login)
+        if [ "$?" != "0" ]; then
+            echo "Failed to log-in to d-h.st"
+            exit 1
+        fi
+
+        devices="$(get_unique_devices_array "${upload_devs[*]}")"
+        for dev in $devices; do
+            mrom_update_xda.py -u $XDA_LOGIN -p $xda_pass_int -s "$token" -d $dev
+        done
     fi
 fi
