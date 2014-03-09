@@ -201,13 +201,13 @@ def generate_variants(dev, man_dev, symlinks):
 
     return res
 
-def generate(readable_json):
+def generate(readable_json, status_text):
     print "Generating manifest..."
 
     config = Utils.loadConfig();
 
     manifest = {
-        "status":"ok",
+        "status": status_text,
         "date" : time.strftime("%Y-%m-%d"),
         "devices" : [ ]
     }
@@ -322,6 +322,7 @@ def print_usage(name):
     print "  -s <suffix>, --suffix=<suffix>     Append suffix to upload folder name and manifest name"
     print "  -l, --lock                         Locks this suffix and does nothing else"
     print "  -u, --unlock                       Unlocks this suffix and does nothing else"
+    print "  --status=<status text>             Set manifest status text"
 
 def main(argc, argv):
     global opt_verbose
@@ -333,6 +334,7 @@ def main(argc, argv):
     readable_json = False
     lock = False
     unlock = False
+    status = "ok"
 
     while i < argc:
         if argv[i] == "--no-upload":
@@ -360,6 +362,8 @@ def main(argc, argv):
             unlock = True
             upload_files = False
             gen_manifest = False
+        elif argv[i].startswith("--status="):
+            status = argv[i][9:].replace("\\n", "\n")
         else:
             print_usage(argv[0]);
             return 0
@@ -381,7 +385,7 @@ def main(argc, argv):
             return 1
 
         if gen_manifest:
-            generate(readable_json)
+            generate(readable_json, status)
 
         if upload_files:
             upload()
