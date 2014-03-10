@@ -134,3 +134,7 @@ class XdaApi():
         if not res["result"]:
             raise Exception("Failed to save post: \"" + res["result_text"].data + "\"")
 
+    def reply_post(self, forum_id, topic_id, post_title, post_content):
+        res = self.api.reply_post(str(forum_id), str(topic_id), xmlrpclib.Binary(post_title), xmlrpclib.Binary(post_content))
+        if not res["result"]:
+            raise Exception("Failed to reply to the post: \"" + res["result_text"].data + "\"")
