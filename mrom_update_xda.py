@@ -45,6 +45,53 @@ class RemoteManifest:
                  return True
          return False
 
+class FirstPostTitleGenerator():
+    re_multirom = re.compile('^multirom-([0-9]{8})-v([0-9]{1,3})([a-z]?)-[a-z]*\.zip$')
+    re_recovery = re.compile('^TWRP_multirom_([a-z]*)_([0-9]{8})(-[0-9]{2})?\.img$')
+
+    def __init__(self, cfg_dev):
+        self.date = None
+        self.files = { }
+        if "title_summary" in cfg_dev["xda"]:
+            self.title_summary = " (%s)" % cfg_dev["xda"]["title_summary"]
+        else:
+            self.title_summary = ""
+
+    def get_file_date(self, f):
+        if f["type"] == "recovery":
+            r = self.re_recovery.match(f["filename"])
+            return datetime.datetime.strptime(r.group(2), "%Y%m%d")
+        elif f["type"] == "multirom":
+            r = self.re_multirom.match(f["filename"])
+            return datetime.datetime.strptime(r.group(1), "%Y%m%d")
+        else:
+            return None
+
+    def add_file(self, f):
+        if f["type"] in self.files:
+            new_date = self.get_file_date(f)
+            old_date = self.get_file_date(self.files[f["type"]])
+            if new_date < old_date:
+                return
+
+        self.files[f["type"]] = f
+
+    def get_highest_date(self):
+        res = datetime.datetime.min;
+        for f in self.files.itervalues():
+            f_date = self.get_file_date(f)
+            if f_date > res:
+                res = f_date
+        return res
+
+    def generate_title(self):
+        date = self.get_highest_date()
+        return "[MOD][%s] MultiROM %s%s" % (
+            date.strftime("%b %d").upper(),
+            self.files["multirom"]["version"],
+            self.title_summary
+        )
+
 class SecondPostGenerator():
     url_re = re.compile("http.?://[^ )\\n]*")
 
@@ -73,14 +120,16 @@ class SecondPostGenerator():
                 return f["url"]
         raise Exception("Couldn't find file %s in dev-host folder!\n" % filename)
 
-    def generate_downloads(self):
+    def generate_downloads(self, title_gen):
         res = '[INDENT][COLOR="Blue"][b] 1. Main downloads[/b][/COLOR]\n\n'
         # multirom
+        title_gen.add_file(self.multirom)
         res += "[B]MultiROM:[/B] [URL=%s]%s[/url]\n" % (
                     self.find_dhst_link(self.multirom["filename"]),
                     self.multirom["filename"]
                 )
         # recovery
+        title_gen.add_file(self.recovery)
         res += "[B]Modified recovery (based on TWRP):[/B] [URL=%s]%s[/url]" % (
                     self.find_dhst_link(self.recovery["filename"]),
                     self.recovery["filename"]
@@ -92,6 +141,7 @@ class SecondPostGenerator():
                     continue
                 var_rec = self.manifest.get_file(var["name"], "recovery")
                 self.man_file_add_filename(var_rec)
+                title_gen.add_file(var_rec)
                 res += " or [URL=%s]%s[/url] (%s)" % (
                             self.find_dhst_link(var_rec["filename"]),
                             var_rec["filename"],
@@ -158,19 +208,7 @@ class SecondPostGenerator():
         res += self.generate_changelog(recovery)
         return res
 
-
-def update_first_post(api, cfg_dev, manifest):
-    post = api.get_raw_post(cfg_dev["xda"]["first_post"])
-    m = manifest.get_file(cfg_dev["name"], "multirom")
-    title = "[MOD][%s] MultiROM %s" % (
-        datetime.datetime.now().strftime("%b %d").upper(),
-        m["version"]
-    )
-    if "title_summary" in cfg_dev["xda"]:
-        title += " (%s)" % cfg_dev["xda"]["title_summary"]
-    api.save_raw_post(post["post_id"], title, post["post_content"].data.replace("\r", ""))
-
-def update_second_post(api, cfg_dev, manifest, dhst_session):
+def update_second_post(api, cfg_dev, manifest, dhst_session, title_gen):
     gen = SecondPostGenerator(cfg_dev, manifest, dhst_session)
     post = api.get_raw_post(cfg_dev["xda"]["second_post"])
 
@@ -181,7 +219,7 @@ def update_second_post(api, cfg_dev, manifest, dhst_session):
     if downloads_start == -1 or downloads_end == -1:
         raise Exception("Failed to find 'Main downloads' in the %s post" % cfg_dev["name"])
     downloads_end += len("[/INDENT]")
-    downloads = gen.generate_downloads()
+    downloads = gen.generate_downloads(title_gen)
     new_post = new_post[:downloads_start] + downloads + new_post[downloads_end:]
 
     # replace changelogs
@@ -193,6 +231,11 @@ def update_second_post(api, cfg_dev, manifest, dhst_session):
 
     # edit the post
     api.save_raw_post(post["post_id"], post["post_title"].data, new_post)
+
+def update_first_post(api, cfg_dev, title_gen):
+    post = api.get_raw_post(cfg_dev["xda"]["first_post"])
+    title = title_gen.generate_title()
+    api.save_raw_post(post["post_id"], title, post["post_content"].data.replace("\r", ""))
 
 def main(argc, argv):
     i = 1
@@ -244,8 +287,9 @@ def main(argc, argv):
             continue
 
         print "Updating thread for " + dev["name"]
-        update_first_post(api, dev, manifest)
-        update_second_post(api, dev, manifest, dhst_session)
+        title_gen = FirstPostTitleGenerator(dev)
+        update_second_post(api, dev, manifest, dhst_session, title_gen)
+        update_first_post(api, dev, title_gen)
 
     api.logout_user()
     return 0
