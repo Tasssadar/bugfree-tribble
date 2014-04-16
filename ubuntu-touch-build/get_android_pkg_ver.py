@@ -22,7 +22,8 @@ def main(argc, argv):
         return 1
 
     # Package: android (20140228-2008-0ubuntu1)\n [multiverse]
-    expr = re.compile('^Package: android \\(([0-9]{8})-([0-9]{4})-\\w*\\).*\n.*$')
+    #                                          1           2          3            4
+    expr = re.compile('^Package: android \\(([0-9]{8})-([0-9]{4})-([0-9]*)ubuntu([0-9]*)\\).*\n.*$')
     m = expr.match(title.text)
     if not m or len(m.groups()) < 2:
         sys.stderr.write("Failed to match regexp!")
@@ -30,7 +31,9 @@ def main(argc, argv):
 
     pkg_date = datetime.datetime.strptime(m.group(1) + m.group(2), "%Y%m%d%H%M")
     # uncodumented feature on linux systems - %s - print timestamp
-    print pkg_date.strftime("%s")
+    timestamp = int(pkg_date.strftime("%s"))
+    timestamp += int(m.group(4))
+    print timestamp
     return 0
 
 if __name__ == "__main__":

@@ -159,24 +159,19 @@ load_last_build_timestamp() {
 
 check_pkg_version() {
     pkg_stamp="$(get_android_pkg_ver.py)"
-    if [ "$?" != "0" ]; then
-        echo "get_android_pkg_ver.py failed!"
-        return 1
-    fi
-
-    if [ "$pkg_stamp" -gt "$1" ]; then
-        return 0
+    if [ "$?" = "0" ] && [ "$pkg_stamp" -gt "$1" ]; then
+        echo "$pkg_stamp"
     else
-        echo "pkg_stamp $pkg_stamp <= last_build $1, aborting build"
-        return 1
+        echo "0"
     fi
 }
 
 handle_args "$*"
 
 last_build="$(load_last_build_timestamp)"
-build_start="$(date +%s)"
-$FORCE || check_pkg_version $last_build || exit 1
+pkg_stamp="$(check_pkg_version $last_build)"
+
+$FORCE || [ "$pkg_stamp" -gt "0" ] || ( echo "Exiting, ubuntu package was not updated since $last_build" && exit 1 )
 
 build
 
@@ -186,4 +181,4 @@ replace_keyring "/opt/system-image-www/gpg/archive-master.tar.xz"
 generate_checksums
 purge_old_images
 
-echo "$build_start" > "${TREE_PATH}/last_build.txt"
+echo "$pkg_stamp" > "${TREE_PATH}/last_build.txt"
