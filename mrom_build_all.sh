@@ -199,8 +199,8 @@ if $noupload; then
     echo "Upload disabled by cmdline args"
 else
     echo "Do you want to upload these files to d-h.st and goo.im?"
-    for u in $upload; do
-        echo "  $u"
+    for (( i=0; i<${#upload[@]}; i++ )); do
+        echo "  ${upload[$i]}"
     done
 
     if ! $forceupload; then
