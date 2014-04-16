@@ -86,7 +86,7 @@ class FirstPostTitleGenerator():
 
     def generate_title(self):
         date = self.get_highest_date()
-        return "[MOD][%s] MultiROM %s%s" % (
+        return "[MOD][%s] MultiROM v%s%s" % (
             date.strftime("%b %d").upper(),
             self.files["multirom"]["version"],
             self.title_summary
