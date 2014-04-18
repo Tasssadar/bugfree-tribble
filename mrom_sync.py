@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import sys, string, os, json, hashlib, time, re, subprocess, copy
+import sys, string, os, json, hashlib, time, re, subprocess, copy, gnupg, getpass
 from os.path import isfile, join
 from datetime import datetime
 
@@ -97,6 +97,27 @@ class Utils:
         if pos < 0:
             pos = len(orig) + pos
         return orig[:pos] + new + orig[pos:]
+
+    @staticmethod
+    def sign_file(passphrase, path, destination = None):
+        key_path = join(MULTIROM_DIR, "gpg")
+
+        if not os.path.isdir(key_path):
+            raise IndexError("GPG dir doesn't exist '%s'." % key_path)
+
+        if not destination:
+            destination = "%s.asc" % path
+
+        if os.path.exists(destination):
+            raise Exception("destination already exists.")
+
+        gpg = gnupg.GPG(gnupghome=key_path)
+        gpg.encoding = 'utf-8'
+        with open(path, "rb") as f:
+            signature = gpg.sign_file(f, passphrase=passphrase, detach=True)
+        with open(destination, "w") as f:
+            f.write(str(signature))
+
 
 def get_multirom_file(path, symlinks):
     ver = [ 0, 0 ]
@@ -201,7 +222,7 @@ def generate_variants(dev, man_dev, symlinks):
 
     return res
 
-def generate(readable_json, status_text):
+def generate(readable_json, status_text, gpg_sign_data, gpg_passphrase):
     print "Generating manifest..."
 
     config = Utils.loadConfig();
@@ -209,6 +230,7 @@ def generate(readable_json, status_text):
     manifest = {
         "status": status_text,
         "date" : time.strftime("%Y-%m-%d"),
+        "gpg" : gpg_sign_data,
         "devices" : [ ]
     }
 
@@ -282,18 +304,25 @@ def generate(readable_json, status_text):
     os.system("rm -f \"" + release_path + "/\"*")
 
     # write manifest
-    with open(join(MULTIROM_DIR, RELEASE_DIR, MANIFEST_NAME), "w") as f:
+    man_path = join(MULTIROM_DIR, RELEASE_DIR, MANIFEST_NAME)
+    with open(man_path, "w") as f:
         if readable_json:
             json.dump(manifest, f, indent=4, separators=(',', ': '))
         else:
             json.dump(manifest, f)
         f.write('\n')
+    Utils.sign_file(gpg_passphrase, man_path)
+
+    # upload gpg public keyring
+    os.symlink(join("..", "gpg", "pubring.gpg"), join(MULTIROM_DIR, RELEASE_DIR, "keyring.gpg"))
 
     # create symlinks
     for dev in symlinks.keys():
         for f in symlinks[dev]:
-            os.symlink(join("..", dev, f), join(MULTIROM_DIR, RELEASE_DIR, f))
-
+            dest = join(MULTIROM_DIR, RELEASE_DIR, f)
+            os.symlink(join("..", dev, f), dest)
+            if gpg_sign_data:
+                Utils.sign_file(gpg_passphrase, dest)
 
 def upload():
     print "Uploading files..."
@@ -330,10 +359,12 @@ def print_usage(name):
     print "  -h, --readable-json                Generate JSON manifest in human-readable form"
     print "  -v, --verbose                      Print more info"
     print "  -n, --dry-run                      Don't change/upload anything. turns on --verbose and --no-upload"
+    print "  -p <pass>, --password=<pass>       Password for the gpg key"
     print "  -s <suffix>, --suffix=<suffix>     Append suffix to upload folder name and manifest name"
     print "  -l, --lock                         Locks this suffix and does nothing else"
     print "  -u, --unlock                       Unlocks this suffix and does nothing else"
     print "  --status=<status text>             Set manifest status text"
+    print "  --no-gpg                           Disable gpg signature on data files (manifest is still signed!)"
 
 def main(argc, argv):
     global opt_verbose
@@ -346,6 +377,8 @@ def main(argc, argv):
     lock = False
     unlock = False
     status = "ok"
+    gpg_passphrase = None
+    no_gpg = False
 
     while i < argc:
         if argv[i] == "--no-upload":
@@ -375,6 +408,13 @@ def main(argc, argv):
             gen_manifest = False
         elif argv[i].startswith("--status="):
             status = argv[i][9:].replace("\\n", "\n")
+        elif argv[i] == "-p" and i+1 < argc:
+            i += 1
+            gpg_passphrase = argv[i]
+        elif argv[i].startswith("--password="):
+            gpg_passphrase = argv[i][11:]
+        elif argv[i] == "--no-gpg":
+            no_gpg = True
         else:
             print_usage(argv[0]);
             return 0
@@ -396,7 +436,9 @@ def main(argc, argv):
             return 1
 
         if gen_manifest:
-            generate(readable_json, status)
+            if not gpg_passphrase:
+                gpg_passphrase = getpass.getpass(prompt='Enter GPG key passphrase: ')
+            generate(readable_json, status, not no_gpg, gpg_passphrase)
 
         if upload_files:
             upload()
