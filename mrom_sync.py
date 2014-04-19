@@ -258,13 +258,16 @@ def generate(readable_json, status_text, gpg_sign_data, gpg_passphrase):
             symlinks[dev["name"]].append(k["file"])
 
             path = join(MULTIROM_DIR, dev["name"], k["file"]);
-            files.append({
+            f = {
                 "type": "kernel",
                 "version": k["name"],
                 "url": BASE_ADDR + k["file"],
                 "md5": Utils.md5sum(path),
                 "size": os.path.getsize(path)
-            })
+            }
+            if "extra" in k:
+                f["extra"] = k["extra"]
+            files.append(f)
 
         if "uninstaller" in dev:
             symlinks[dev["name"]].append(dev["uninstaller"])
