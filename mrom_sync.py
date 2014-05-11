@@ -115,11 +115,21 @@ class Utils:
         gpg.encoding = 'utf-8'
         with open(path, "rb") as f:
             signature = gpg.sign_file(f, passphrase=passphrase, detach=True)
+        if not signature:
+            raise Exception("Failed to sign file %s, probably bad passphrase!" % path);
         with open(destination, "w") as f:
             f.write(str(signature))
 
+class GeneratorParams:
+    def __init__(self):
+        self.status = "ok"
+        self.readable_json = False
+        self.mrom_ver = None
+        self.rec_ver = None
+        self.gpg_data = True
+        self.gpg_passphrase = None
 
-def get_multirom_file(path, symlinks):
+def get_multirom_file(pref_ver, path, symlinks):
     ver = [ 0, 0 ]
     filename = ""
     size = 0
@@ -135,7 +145,8 @@ def get_multirom_file(path, symlinks):
         maj = int(match.group(1))
         patch = match.group(2)[0] if match.group(2) else 0
 
-        if maj > ver[0] or (maj == ver[0] and patch > ver[1]):
+        if ((pref_ver and match.group(1) + match.group(2) == pref_ver) or
+           (not pref_ver and (maj > ver[0] or (maj == ver[0] and patch > ver[1])))):
             ver[0] = maj
             ver[1] = patch
             filename = f
@@ -155,7 +166,7 @@ def get_multirom_file(path, symlinks):
         "size": size
     }
 
-def get_recovery_file(device_name, path, symlinks):
+def get_recovery_file(pref_ver, device_name, path, symlinks):
     ver_date = datetime.min
     ver_str = ""
     filename = ""
@@ -174,7 +185,8 @@ def get_recovery_file(device_name, path, symlinks):
             continue
 
         date = datetime.strptime(info["boot_img_hdr"]["name"], "mrom%Y%m%d-%M")
-        if date > ver_date:
+        if ((pref_ver and info["boot_img_hdr"]["name"] == pref_ver) or
+            (not pref_ver and date > ver_date)):
             ver_date = date
             ver_str = info["boot_img_hdr"]["name"]
             filename = f
@@ -194,7 +206,7 @@ def get_recovery_file(device_name, path, symlinks):
         "size": size
     }
 
-def generate_variants(dev, man_dev, symlinks):
+def generate_variants(params, dev, man_dev, symlinks):
     res = []
     for var in dev["variants"]:
         Utils.v("Variant " + var["name"] + " of " + dev["name"] + ":")
@@ -207,7 +219,7 @@ def generate_variants(dev, man_dev, symlinks):
         symlinks[var["name"]] = []
 
         if "recovery" in overrides:
-            rec = get_recovery_file(var["name"], join(MULTIROM_DIR, var["name"]), symlinks[var["name"]])
+            rec = get_recovery_file(params.rec_ver, var["name"], join(MULTIROM_DIR, var["name"]), symlinks[var["name"]])
             for i in range(len(man_var["files"])):
                 if man_var["files"][i]["type"] == "recovery":
                     man_var["files"][i] = rec
@@ -222,15 +234,15 @@ def generate_variants(dev, man_dev, symlinks):
 
     return res
 
-def generate(readable_json, status_text, gpg_sign_data, gpg_passphrase):
+def generate(params):
     print "Generating manifest..."
 
     config = Utils.loadConfig();
 
     manifest = {
-        "status": status_text,
+        "status": params.status,
         "date" : time.strftime("%Y-%m-%d"),
-        "gpg" : gpg_sign_data,
+        "gpg" : params.gpg_data,
         "devices" : [ ]
     }
 
@@ -250,8 +262,8 @@ def generate(readable_json, status_text, gpg_sign_data, gpg_passphrase):
         symlinks[dev["name"]] = []
 
         files = [
-            get_multirom_file(join(MULTIROM_DIR, dev["name"]), symlinks[dev["name"]]),
-            get_recovery_file(dev["name"], join(MULTIROM_DIR, dev["name"]), symlinks[dev["name"]])
+            get_multirom_file(params.mrom_ver, join(MULTIROM_DIR, dev["name"]), symlinks[dev["name"]]),
+            get_recovery_file(params.rec_ver, dev["name"], join(MULTIROM_DIR, dev["name"]), symlinks[dev["name"]])
         ]
 
         for k in dev["kernels"]:
@@ -296,7 +308,7 @@ def generate(readable_json, status_text, gpg_sign_data, gpg_passphrase):
         manifest["devices"].append(man_dev)
 
         if "variants" in dev:
-            manifest["devices"].extend(generate_variants(dev, man_dev, symlinks))
+            manifest["devices"].extend(generate_variants(params, dev, man_dev, symlinks))
 
     if opt_dry_run:
         return
@@ -309,12 +321,12 @@ def generate(readable_json, status_text, gpg_sign_data, gpg_passphrase):
     # write manifest
     man_path = join(MULTIROM_DIR, RELEASE_DIR, MANIFEST_NAME)
     with open(man_path, "w") as f:
-        if readable_json:
+        if params.readable_json:
             json.dump(manifest, f, indent=4, separators=(',', ': '))
         else:
             json.dump(manifest, f)
         f.write('\n')
-    Utils.sign_file(gpg_passphrase, man_path)
+    Utils.sign_file(params.gpg_passphrase, man_path)
 
     # upload gpg public keyring
     os.symlink(join("..", "gpg", "pubring.gpg"), join(MULTIROM_DIR, RELEASE_DIR, "keyring.gpg"))
@@ -324,8 +336,8 @@ def generate(readable_json, status_text, gpg_sign_data, gpg_passphrase):
         for f in symlinks[dev]:
             dest = join(MULTIROM_DIR, RELEASE_DIR, f)
             os.symlink(join("..", dev, f), dest)
-            if gpg_sign_data:
-                Utils.sign_file(gpg_passphrase, dest)
+            if params.gpg_data:
+                Utils.sign_file(params.gpg_passphrase, dest)
 
 def upload():
     print "Uploading files..."
@@ -368,6 +380,8 @@ def print_usage(name):
     print "  -u, --unlock                       Unlocks this suffix and does nothing else"
     print "  --status=<status text>             Set manifest status text"
     print "  --no-gpg                           Disable gpg signature on data files (manifest is still signed!)"
+    print "  --mrom_ver=<multirom version>      Use specific multirom version (e.g. 22b)"
+    print "  --rec_ver=<recovery version>       Use specific recovery version (e.g. mrom20141022-00)"
 
 def main(argc, argv):
     global opt_verbose
@@ -376,12 +390,9 @@ def main(argc, argv):
     i = 1
     gen_manifest = True
     upload_files = True
-    readable_json = False
     lock = False
     unlock = False
-    status = "ok"
-    gpg_passphrase = None
-    no_gpg = False
+    params = GeneratorParams()
 
     while i < argc:
         if argv[i] == "--no-upload":
@@ -389,7 +400,7 @@ def main(argc, argv):
         elif argv[i] == "--no-gen-manifest":
             gen_manifest = False
         elif argv[i] == "-h" or argv[i] == "--readable-json":
-            readable_json = True
+            params.readable_json = True
         elif argv[i] == "-v" or argv[i] == "--verbose":
             opt_verbose = True
         elif argv[i] == "-n" or argv[i] == "--dry-run":
@@ -410,14 +421,20 @@ def main(argc, argv):
             upload_files = False
             gen_manifest = False
         elif argv[i].startswith("--status="):
-            status = argv[i][9:].replace("\\n", "\n")
+            params.status = argv[i][9:].replace("\\n", "\n")
         elif argv[i] == "-p" and i+1 < argc:
             i += 1
-            gpg_passphrase = argv[i]
+            params.gpg_passphrase = argv[i]
         elif argv[i].startswith("--password="):
-            gpg_passphrase = argv[i][11:]
+            params.gpg_passphrase = argv[i][11:]
         elif argv[i] == "--no-gpg":
-            no_gpg = True
+            params.gpg_data = False
+        elif argv[i].startswith("--mrom_ver="):
+            params.mrom_ver = argv[i][11:]
+        elif argv[i].startswith("--rec_ver="):
+            params.rec_ver = argv[i][10:]
+            if not params.rec_ver.startswith("mrom"):
+                params.rec_ver = "mrom" + params.rec_ver
         else:
             print_usage(argv[0]);
             return 0
@@ -439,9 +456,9 @@ def main(argc, argv):
             return 1
 
         if gen_manifest:
-            if not gpg_passphrase:
-                gpg_passphrase = getpass.getpass(prompt='Enter GPG key passphrase: ')
-            generate(readable_json, status, not no_gpg, gpg_passphrase)
+            if not params.gpg_passphrase and not opt_dry_run:
+                params.gpg_passphrase = getpass.getpass(prompt='Enter GPG key passphrase: ')
+            generate(params)
 
         if upload_files:
             upload()
