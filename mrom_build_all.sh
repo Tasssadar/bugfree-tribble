@@ -77,6 +77,11 @@ for a in $@; do
             forceupload=true
             forcexda=true
             ;;
+        forcenone)
+            noupload=true
+            noxda=true
+            nosync=true
+            ;;
     esac
 done
 
