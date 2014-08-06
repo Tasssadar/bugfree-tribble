@@ -71,7 +71,7 @@ class Utils:
 
     @staticmethod
     def rsync(src, dst):
-        cmd = [ "rsync", "-rLtzP", "--delete", src, dst ]
+        cmd = [ "rsync", "-rLtzP", "--delete", "--delete-after", src, dst ]
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
         while True:
