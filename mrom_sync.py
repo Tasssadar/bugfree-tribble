@@ -1,5 +1,5 @@
 #!/usr/bin/python
-import sys, string, os, json, hashlib, time, re, subprocess, copy, gnupg, getpass
+import sys, string, os, json, hashlib, time, re, subprocess, copy, gnupg, getpass, urllib2
 from os.path import isfile, join
 from datetime import datetime
 
@@ -365,6 +365,28 @@ def unlock_suffix():
     os.remove(path)
     print "Lock \"" + path + "\" was removed."
 
+def print_man_versions(man, ftype):
+    padding = 0
+    for d in man["devices"]:
+        if len(d["name"]) > padding:
+            padding = len(d["name"])
+
+    for d in man["devices"]:
+        versions = ""
+        for f in d["files"]:
+            if f["type"] == ftype:
+                versions += f["version"] + "; "
+        print " * %s:%s %s" % (d["name"], ' ' * (padding - len(d["name"])), versions[:-2])
+
+def print_man_info(manifest_data):
+    man = json.loads(manifest_data)
+    print "MultiROM versions:"
+    print_man_versions(man, "multirom")
+    print "\nRecovery versions:"
+    print_man_versions(man, "recovery")
+    print "\nKernels:"
+    print_man_versions(man, "kernel")
+
 def print_usage(name):
     print "Usage: " + name + " [switches]";
     print "\nSwitches:"
@@ -372,6 +394,8 @@ def print_usage(name):
     print "  --no-upload                        Don't upload anything, just generate"
     print "  --no-gen-manifest                  Don't generate anything, just rsync current files"
     print "  -h, --readable-json                Generate JSON manifest in human-readable form"
+    print "  -i, --info                         Don't generate anything, just download the manifest and print information about versions"
+    print "  -l, --local-info                   Don't generate anything, just open local manifest and print information about versions"
     print "  -v, --verbose                      Print more info"
     print "  -n, --dry-run                      Don't change/upload anything. turns on --verbose and --no-upload"
     print "  -p <pass>, --password=<pass>       Password for the gpg key"
@@ -393,6 +417,8 @@ def main(argc, argv):
     lock = False
     unlock = False
     params = GeneratorParams()
+    print_man = False
+    print_man_local = False
 
     while i < argc:
         if argv[i] == "--no-upload":
@@ -407,6 +433,11 @@ def main(argc, argv):
             opt_dry_run = True
             opt_verbose = True
             upload_files = False
+        elif argv[i] == "-i" or argv[i] == "--info":
+            print_man = True
+        elif argv[i] == "-l" or argv[i] == "--local-info":
+            print_man = True
+            print_man_local = True
         elif argv[i] == "-s" and i+1 < argc:
             i += 1
             insert_suffix(argv[i])
@@ -448,6 +479,14 @@ def main(argc, argv):
         lock_suffix()
     elif unlock:
         unlock_suffix()
+    elif print_man:
+        man = None
+        if not print_man_local:
+            man = urllib2.urlopen(BASE_ADDR + MANIFEST_NAME).read()
+        else:
+            with open(join(MULTIROM_DIR, RELEASE_DIR, MANIFEST_NAME), 'r') as f:
+                man = f.read()
+        print_man_info(man)
     else:
         lock_path = join(MULTIROM_DIR, RELEASE_DIR, ".lock")
         if os.path.exists(lock_path):
