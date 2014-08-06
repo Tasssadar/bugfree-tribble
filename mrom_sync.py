@@ -128,6 +128,7 @@ class GeneratorParams:
         self.rec_ver = None
         self.gpg_data = True
         self.gpg_passphrase = None
+        self.command = ""
 
 def get_multirom_file(pref_ver, path, symlinks):
     ver = [ 0, 0 ]
@@ -241,10 +242,14 @@ def generate(params):
 
     manifest = {
         "status": params.status,
+        "commands": params.command,
         "date" : time.strftime("%Y-%m-%d"),
         "gpg" : params.gpg_data,
         "devices" : [ ]
     }
+
+    Utils.v("Status: %s" % params.status)
+    Utils.v("Command: %s" % params.command)
 
     symlinks = { }
 
@@ -403,6 +408,7 @@ def print_usage(name):
     print "  -l, --lock                         Locks this suffix and does nothing else"
     print "  -u, --unlock                       Unlocks this suffix and does nothing else"
     print "  --status=<status text>             Set manifest status text"
+    print "  --command=<command>                Command for the MultiROM Manager app"
     print "  --no-gpg                           Disable gpg signature on data files (manifest is still signed!)"
     print "  --mrom_ver=<multirom version>      Use specific multirom version (e.g. 22b)"
     print "  --rec_ver=<recovery version>       Use specific recovery version (e.g. mrom20141022-00)"
@@ -453,6 +459,8 @@ def main(argc, argv):
             gen_manifest = False
         elif argv[i].startswith("--status="):
             params.status = argv[i][9:].replace("\\n", "\n")
+        elif argv[i].startswith("--command="):
+            params.command = argv[i][10:]
         elif argv[i] == "-p" and i+1 < argc:
             i += 1
             params.gpg_passphrase = argv[i]
