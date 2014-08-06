@@ -39,6 +39,13 @@ class RemoteManifest:
             return None
         return res[0]
 
+    def get_file_by_filename(self, dev_name, filename):
+        for dev in self.data["devices"]:
+            if dev_name == dev["name"]:
+                for f in dev["files"]:
+                    if f["url"].endswith(filename):
+                        return f
+
     def has_device(self, dev_name):
          for dev in self.data["devices"]:
              if dev_name == dev["name"]:
@@ -118,7 +125,8 @@ class SecondPostGenerator():
         for f in self.dhst_files:
             if f["name"] == filename:
                 return f["url"]
-        raise Exception("Couldn't find file %s in dev-host folder!\n" % filename)
+        print "Couldn't find file %s in dev-host folder, using link from manifest!" % filename
+        return self.manifest.get_file_by_filename(self.cfg_dev["name"], filename)["url"]
 
     def generate_downloads(self, title_gen):
         res = '[INDENT][COLOR="Blue"][b] 1. Main downloads[/b][/COLOR]\n\n'
