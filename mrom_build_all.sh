@@ -27,7 +27,7 @@ recovery_patch=""
 for a in $@; do
     case $a in
         -h|--help)
-            echo "$0 [nobuild] [noclean] [nodhst] [nogoo] [device=mako|grouper|flo|hammerhead] [forceall] [forceupload] [noupload] [forcesync] [nosync] [forcexda] [noxda] [recovery] [multirom] [recovery_patch=00-59]"
+            echo "$0 [nobuild] [noclean] [nodhst] [nogoo] [device=mako|grouper|flo|hammerhead] [forceall] [forcenone] [forceupload] [noupload] [forcesync] [nosync] [forcexda] [noxda] [recovery] [multirom] [recovery_patch=00-59]"
             exit 0
             ;;
         nobuild)
