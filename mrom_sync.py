@@ -400,7 +400,7 @@ def print_usage(name):
     print "  --no-gen-manifest                  Don't generate anything, just rsync current files"
     print "  -h, --readable-json                Generate JSON manifest in human-readable form"
     print "  -i, --info                         Don't generate anything, just download the manifest and print information about versions"
-    print "  -l, --local-info                   Don't generate anything, just open local manifest and print information about versions"
+    print "  --local-info                       Don't generate anything, just open local manifest and print information about versions"
     print "  -v, --verbose                      Print more info"
     print "  -n, --dry-run                      Don't change/upload anything. turns on --verbose and --no-upload"
     print "  -p <pass>, --password=<pass>       Password for the gpg key"
@@ -441,7 +441,7 @@ def main(argc, argv):
             upload_files = False
         elif argv[i] == "-i" or argv[i] == "--info":
             print_man = True
-        elif argv[i] == "-l" or argv[i] == "--local-info":
+        elif argv[i] == "--local-info":
             print_man = True
             print_man_local = True
         elif argv[i] == "-s" and i+1 < argc:
