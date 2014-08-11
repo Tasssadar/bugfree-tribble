@@ -13,7 +13,7 @@ fi
 nobuild=false
 noclean=false
 nodhst=false
-nogoo=false
+nobasket=false
 noxda=false
 forcexda=false
 build_spec=""
@@ -27,7 +27,7 @@ recovery_patch=""
 for a in $@; do
     case $a in
         -h|--help)
-            echo "$0 [nobuild] [noclean] [nodhst] [nogoo] [device=mako|grouper|flo|hammerhead] [forceall] [forcenone] [forceupload] [noupload] [forcesync] [nosync] [forcexda] [noxda] [recovery] [multirom] [recovery_patch=00-59]"
+            echo "$0 [nobuild] [noclean] [nodhst] [nobasket] [device=mako|grouper|flo|hammerhead] [forceall] [forcenone] [forceupload] [noupload] [forcesync] [nosync] [forcexda] [noxda] [recovery] [multirom] [recovery_patch=00-59]"
             exit 0
             ;;
         nobuild)
@@ -36,8 +36,8 @@ for a in $@; do
         noclean)
             noclean=true
             ;;
-        nogoo)
-            nogoo=true
+        nobasket)
+            nobasket=true
             ;;
         nodhst)
             nodhst=true
@@ -115,7 +115,7 @@ get_unique_devices_array() {
 }
 
 dhst_pass_int="$(acquire_pass "dev-host" $DHST_PASS $nodhst)"
-gooim_pass_int="$(acquire_pass "goo.im" $GOOIM_PASS $nogoo)"
+basket_pass_int="$(acquire_pass "buildbasket.com" $BASKET_PASS $nobasket)"
 xda_pass_int="$(acquire_pass "XDA" $XDA_PASS $noxda)"
 
 . build/envsetup.sh
@@ -196,14 +196,14 @@ done
 upload=($upload)
 upload_devs=($upload_devs)
 
-if $nodhst && $nogoo; then
+if $nodhst && $nobasket; then
     noupload=true
 fi
 
 if $noupload; then
     echo "Upload disabled by cmdline args"
 else
-    echo "Do you want to upload these files to d-h.st and goo.im?"
+    echo "Do you want to upload these files to d-h.st and buildbasket.com?"
     for (( i=0; i<${#upload[@]}; i++ )); do
         echo "  ${upload[$i]}"
     done
@@ -238,17 +238,25 @@ else
             done
         fi
 
-        if ! $nogoo; then
+        if ! $nobasket; then
             echo
-            echo "Uploading to goo.im..."
+            echo "Uploading to bascketbuild.com..."
             for (( i=0; i<${#upload[@]}; i++ )); do
                 u=${upload[$i]}
+                u_file="$(basename "$u")"
+                u_dir="${u%$u_file}"
                 dev=${upload_devs[$i]}
 
                 echo "Uploading $u"
-                sshpass -p $gooim_pass_int scp $u upload.goo.im:~/public_html/multirom/${dev}/
+                ftp -n <<EOF
+open basketbuild.com
+user $BASKET_LOGIN $basket_pass_int
+cd multirom/${dev}
+lcd $u_dir
+put $u_file
+EOF
                 if [ "$?" != "0" ]; then
-                    echo "Failed to upload $u to goo.im!"
+                    echo "Failed to upload $u to basketbuild.com!"
                     exit 1
                 fi
             done
@@ -286,15 +294,9 @@ else
     fi
 
     if [ "$update_xda" = "y" ] || [ "$update_xda" = "Y" ]; then
-        token=$(dhst_cli.py -l "$DHST_LOGIN" -p "$dhst_pass_int" login)
-        if [ "$?" != "0" ]; then
-            echo "Failed to log-in to d-h.st"
-            exit 1
-        fi
-
         devices="$(get_unique_devices_array "${upload_devs[*]}")"
         for dev in $devices; do
-            mrom_update_xda.py -u $XDA_LOGIN -p $xda_pass_int -s "$token" -d $dev
+            mrom_update_xda.py -u $XDA_LOGIN -p $xda_pass_int --basket-login="$BASKET_LOGIN" --basket-pass="$basket_pass_int" -d $dev
         done
     fi
 fi

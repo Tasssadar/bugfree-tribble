@@ -20,14 +20,7 @@ fi
 
 . ~/mrom_cfg.sh
 
-dhst_pass_int="$(echo $DHST_PASS | base64 -d)"
+basket_pass_int="$(echo $BASKET_PASS | base64 -d)"
 xda_pass_int="$(echo $XDA_PASS | base64 -d)"
 
-echo "Logging in to d-h.st..."
-token=$(dhst_cli.py -l "$DHST_LOGIN" -p "$dhst_pass_int" login)
-if [ "$?" != "0" ]; then
-    echo "Failed to log-in to d-h.st"
-    exit 1
-fi
-
-mrom_update_xda.py -u $XDA_LOGIN -p $xda_pass_int -s "$token" $devices
+mrom_update_xda.py -u $XDA_LOGIN -p $xda_pass_int --basket-login=$BASKET_LOGIN --basket-pass=$basket_pass_int $devices

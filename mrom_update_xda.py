@@ -8,6 +8,7 @@ import requests
 import dhst_cli
 import xdaapi
 import re
+import ftplib
 
 MANIFEST_URL = "http://tasemnice.eu/multirom/manifest.json"
 MULTIROM_DIR = "/home/tassadar/nexus/multirom/"
@@ -51,6 +52,46 @@ class RemoteManifest:
              if dev_name == dev["name"]:
                  return True
          return False
+
+class DhstFileHosting:
+    def __init__(self, dev_name, dhst_session):
+        dhst_api = dhst_cli.DevHostAPI()
+        dhst_api.session_token = dhst_session
+        self.dhst_files = dhst_api.get_folder_content("multirom/%s" % dev_name)
+
+    def find_file_link(self, filename):
+        for f in self.dhst_files:
+            if f["name"] == filename:
+                return f["url"]
+        return None
+
+class FtpFileHosting:
+    def __init__(self, dev_name, host, user, password):
+        self.files = []
+        self.path = "/multirom/%s" % dev_name
+
+        f=ftplib.FTP(host)
+        f.login(user, password)
+        f.cwd(self.path)
+        f.retrlines("NLST", self._file_list_line)
+        f.quit()
+
+    def _file_list_line(self, filename):
+        self.files.append(filename)
+
+    def find_file_link(self, filename):
+        raise NotImplementedError("Implement this method in a subclass!")
+
+class BasketBuildFileHosting(FtpFileHosting):
+    def __init__(self, dev_name, login, password):
+        FtpFileHosting.__init__(self, dev_name, "basketbuild.com", login, password)
+        self.devname = login[:-2]
+
+    def find_file_link(self, filename):
+        for f in self.files:
+            if f == filename:
+                return "https://s.basketbuild.com/filedl/devs?dev=%s&dl=%s/%s/%s" % (self.devname, self.devname, self.path, f)
+        return None
 
 class FirstPostTitleGenerator():
     re_multirom = re.compile('^multirom-([0-9]{8})-v([0-9]{1,3})([a-z]?)-[a-z]*\.zip$')
@@ -102,13 +143,10 @@ class FirstPostTitleGenerator():
 class SecondPostGenerator():
     url_re = re.compile("http.?://[^ )\\n]*")
 
-    def __init__(self, cfg_dev, manifest, dhst_session):
+    def __init__(self, cfg_dev, manifest, file_hosting):
         self.cfg_dev = cfg_dev
         self.manifest = manifest
-
-        dhst_api = dhst_cli.DevHostAPI()
-        dhst_api.session_token = dhst_session
-        self.dhst_files = dhst_api.get_folder_content("multirom/%s" % cfg_dev["name"])
+        self.file_hosting = file_hosting
 
         self.multirom = manifest.get_file(cfg_dev["name"], "multirom")
         self.recovery = manifest.get_file(cfg_dev["name"], "recovery")
@@ -121,10 +159,10 @@ class SecondPostGenerator():
         f["filename"] = u[u.rfind("/")+1:]
         return f
 
-    def find_dhst_link(self, filename):
-        for f in self.dhst_files:
-            if f["name"] == filename:
-                return f["url"]
+    def find_file_link(self, filename):
+        url=self.file_hosting.find_file_link(filename)
+        if url:
+            return url
         print "Couldn't find file %s in dev-host folder, using link from manifest!" % filename
         return self.manifest.get_file_by_filename(self.cfg_dev["name"], filename)["url"]
 
@@ -133,13 +171,13 @@ class SecondPostGenerator():
         # multirom
         title_gen.add_file(self.multirom)
         res += "[B]MultiROM:[/B] [URL=%s]%s[/url]\n" % (
-                    self.find_dhst_link(self.multirom["filename"]),
+                    self.find_file_link(self.multirom["filename"]),
                     self.multirom["filename"]
                 )
         # recovery
         title_gen.add_file(self.recovery)
         res += "[B]Modified recovery (based on TWRP):[/B] [URL=%s]%s[/url]" % (
-                    self.find_dhst_link(self.recovery["filename"]),
+                    self.find_file_link(self.recovery["filename"]),
                     self.recovery["filename"]
                 )
         if "variants" in self.cfg_dev:
@@ -151,7 +189,7 @@ class SecondPostGenerator():
                 self.man_file_add_filename(var_rec)
                 title_gen.add_file(var_rec)
                 res += " or [URL=%s]%s[/url] (%s)" % (
-                            self.find_dhst_link(var_rec["filename"]),
+                            self.find_file_link(var_rec["filename"]),
                             var_rec["filename"],
                             var["name"]
                         )
@@ -159,20 +197,20 @@ class SecondPostGenerator():
         # MutliROM Manager
         res += (
             '[B]MultiROM Manager Android app[/b]: [url=https://play.google.com/store/apps/details?id=com.tassadar.multirommgr]Google Play[/url] '
-            'or [url=http://d-h.st/users/tassadar/?fld_id=27952#files]link to APK[/url]\n\n'
+            'or [url=https://s.basketbuild.com/devs/Tassadar/multirom/manager]link to APK[/url]\n\n'
         )
         # kernels
         for k in self.kernels:
             res += '[b]Kernel w/ kexec-hardboot patch (%s):[/b] [url=%s]%s[/url]\n' % (
                         k["version"],
-                        self.find_dhst_link(k["filename"]),
+                        self.find_file_link(k["filename"]),
                         k["filename"]
                     )
 
         # footer
         res += (
-            '[COLOR="Red"]You need to have kernel with kexec-hardboot patch in both primary ROM and secondary ROMs, if said secondary ROM does not share kernel![/COLOR]\n\n'
-            'Mirror: [url]http://goo.im/devs/Tassadar/multirom/%s/[/url] (also accessible via GooManager, search for [i]multirom[/i])[/INDENT]' % self.cfg_dev["name"]
+            '[COLOR="Red"]You need to have kernel with kexec-hardboot patch only in your primary ROM![/COLOR]\n\n'
+            'Mirror: [url]http://d-h.st/users/tassadar[/url][/INDENT]'
         )
         return res
 
@@ -251,6 +289,9 @@ def main(argc, argv):
     password=""
     device=""
     dhst_session=""
+    basket_login=""
+    basket_pass=""
+    hosting="basketbuild"
 
     while i < argc:
         if argv[i] == "-u":
@@ -265,6 +306,12 @@ def main(argc, argv):
         elif argv[i] == "-s":
             i+=1
             dhst_session = argv[i]
+        elif argv[i].startswith("--basket-login="):
+            basket_login=argv[i][15:]
+        elif argv[i].startswith("--basket-pass="):
+            basket_pass=argv[i][14:]
+        elif argv[i].startswith("--hosting="):
+            hosting=argv[i][10:]
         else:
             print "Invalid argument " + argv[i]
             return 1
@@ -294,9 +341,14 @@ def main(argc, argv):
             print "Device " + dev["name"] + " doesn't have xda config"
             continue
 
+        if hosting == "basketbuild":
+            file_hosting=BasketBuildFileHosting(dev["name"], basket_login, basket_pass)
+        elif hosting == "dhst":
+            file_hosting=DhstFileHosting(dev["name"], dhst_session)
+
         print "Updating thread for " + dev["name"]
         title_gen = FirstPostTitleGenerator(dev)
-        update_second_post(api, dev, manifest, dhst_session, title_gen)
+        update_second_post(api, dev, manifest, file_hosting, title_gen)
         update_first_post(api, dev, title_gen)
 
     api.logout_user()
