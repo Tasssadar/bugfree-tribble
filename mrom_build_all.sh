@@ -1,9 +1,10 @@
 #!/bin/bash
 DEST_DIR="/home/tassadar/nexus/multirom"
-TARGETS="omni_grouper-userdebug omni_flo-userdebug omni_mako-userdebug omni_hammerhead-userdebug"
+TARGETS="omni_grouper-userdebug omni_flo-userdebug omni_mako-userdebug omni_hammerhead-userdebug omni_shamu-userdebug"
 
 API_KEY="--"
 APP_ID="--"
+COMPILE_THREADS="$(expr $(nproc) + 2)"
 
 # Include passwords and API things
 if [ -e ~/mrom_cfg.sh ]; then
@@ -27,7 +28,7 @@ recovery_patch=""
 for a in $@; do
     case $a in
         -h|--help)
-            echo "$0 [nobuild] [noclean] [nodhst] [nobasket] [device=mako|grouper|flo|hammerhead] [forceall] [forcenone] [forceupload] [noupload] [forcesync] [nosync] [forcexda] [noxda] [recovery] [multirom] [recovery_patch=00-59]"
+            echo "$0 [nobuild] [noclean] [nodhst] [nobasket] [device=mako|grouper|flo|hammerhead|shamu] [forceall] [forcenone] [forceupload] [noupload] [forcesync] [nosync] [forcexda] [noxda] [recovery] [multirom] [recovery_patch=00-59]"
             exit 0
             ;;
         nobuild)
@@ -146,11 +147,11 @@ for t in $TARGETS; do
         fi
 
         if $recoveryonly; then
-            make -j4 recoveryimage || exit 1
+            make -j${COMPILE_THREADS} recoveryimage || exit 1
         elif $multiromonly; then
-            make -j4 multirom_zip || exit 1
+            make -j${COMPILE_THREADS} multirom_zip || exit 1
         else
-            make -j4 recoveryimage multirom_zip || exit 1
+            make -j${COMPILE_THREADS} recoveryimage multirom_zip || exit 1
         fi
     fi
 
@@ -162,7 +163,7 @@ for t in $TARGETS; do
             patch="00"
         fi
 
-        files="$(RECOVERY_SUBVER="$patch" AUTO_PATCH_INCREMENT="$do_auto_patch_increment" PRINT_FILES="true" mrom_recovery_release.sh)"
+        files="$(RECOVERY_SUBVER="$patch" AUTO_PATCH_INCREMENT="$do_auto_patch_increment" PRINT_FILES="true" IMG_PATH="$OUT/recovery.img" mrom_recovery_release.sh)"
 
         if [ "$?" != "0" ]; then
             echo "mrom_recovery_release.sh failed!"
