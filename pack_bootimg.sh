@@ -4,7 +4,12 @@ if [ "$#" -lt "1" ]; then
     exit 0
 fi
 
+dtb_part=""
+if [ -f "dtb.img" ]; then
+    dtb_part="-d dtb.img"
+fi
+
 abootimg-pack-initrd -f initrd.img init || exit 1
 grep -v "bootsize" bootimg.cfg > bootimg-new.cfg || exit 1
-abootimg --create "$1" -f bootimg-new.cfg -k zImage -r initrd.img
-abootimg -i "$1"
+bbootimg --create "$1" -f bootimg-new.cfg -k zImage -r initrd.img $dtb_part
+bbootimg -i "$1"

@@ -4,8 +4,8 @@ if [ "$#" -lt "1" ]; then
     exit 0
 fi
 
-abootimg -i $1
-abootimg -x $1
+bbootimg -i $1
+bbootimg -x $1
 
 if [ -d "./init" ]; then
     rm -rf init
