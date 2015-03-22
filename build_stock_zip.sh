@@ -109,6 +109,8 @@ process_bootimg() {
     cd boot
     extract_bootimg.sh boot.img > /dev/null || fail "Failed to extract boot image!"
     cp init/file_contexts ../package/ || fail "Failed to copy file_contexts!"
+    sed -i 's/ seclabel u:r:install_recovery:s0/ #seclabel u:r:install_recovery:s0/' init/init.rc
+    pack_bootimg.sh ../boot.img
     cd ..
     rm -r boot
 }
@@ -124,8 +126,6 @@ process_initrd() {
     rm -r init
 }
 
-cp boot.img package/
-
 if $UBUNTU_TOUCH; then
     cp mnt_images/system/boot/android-ramdisk.img ./initrd.img
 fi
@@ -135,6 +135,8 @@ if [ -f "initrd.img" ]; then
 else
     process_bootimg
 fi
+
+cp boot.img package/
 
 echo "Creating script..."
 
