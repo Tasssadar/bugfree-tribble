@@ -24,10 +24,10 @@ class CookieTransport(xmlrpclib.Transport):
     # correctly with the old-style Transport class. If you make this class
     # a new-style class, Transport.__init__() won't be called.
 
-    cookies = []
+    cookies = {}
     def send_cookies(self, connection):
         if self.cookies:
-            cookies_str= "; ".join(self.cookies)
+            cookies_str = '; '.join("%s=%s" % t for t in self.cookies.iteritems())
             connection.putheader("Cookie", cookies_str)
 
     def request(self, host, handler, request_body, verbose=0):
@@ -58,7 +58,11 @@ class CookieTransport(xmlrpclib.Transport):
         for header in response.msg.getallmatchingheaders("Set-Cookie"):
             val = header.split(": ", 1)[1]
             cookie = val.split(";", 1)[0]
-            self.cookies.append(cookie)
+            cookie = cookie.split("=", 1)
+            if cookie[1] != "deleted":
+                self.cookies[cookie[0]] = cookie[1]
+            elif cookie[0] in self.cookies:
+                del self.cookies[cookie[0]]
 
         if response.status != 200:
             raise xmlrpclib.ProtocolError(host + handler, response.status,
