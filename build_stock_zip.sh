@@ -45,17 +45,11 @@ for arg in "$@"; do
             SYS_DEV="/dev/block/platform/msm_sdcc.1/by-name/system"
             CHECK_NAMES="flo deb"
             ;;
-        mako)
+        hammerhead|mako|shamu)
             DEVICE="$arg"
             BOOT_DEV="/dev/block/platform/msm_sdcc.1/by-name/boot"
             SYS_DEV="/dev/block/platform/msm_sdcc.1/by-name/system"
-            CHECK_NAMES="mako"
-            ;;
-        hammerhead)
-            DEVICE="$arg"
-            BOOT_DEV="/dev/block/platform/msm_sdcc.1/by-name/boot"
-            SYS_DEV="/dev/block/platform/msm_sdcc.1/by-name/system"
-            CHECK_NAMES="hammerhead"
+            CHECK_NAMES="$arg"
             ;;
 
         --userdata)
