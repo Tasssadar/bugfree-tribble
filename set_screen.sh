@@ -104,6 +104,10 @@ if is_active "LVDS1"; then
         if ! is_active "HDMI1"; then
             echo "-- Start HDMI1"
             xrandr --output LVDS1 --off --output HDMI1 --auto
+        elif [ "$(get_resolution "HDMI1")" = "1024x768" ] && [ "$(get_resolution "LVDS1")" = "1024x768" ]; then
+            echo "-- Stop LVDS1"
+            echo "-- Set HDMI1 to auto"
+            xrandr --output LVDS1 --off --output HDMI1 --auto
         else
             echo "-- Stop LVDS1"
             xrandr --output LVDS1 --off
