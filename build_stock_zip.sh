@@ -9,8 +9,11 @@ fail() {
     for img in $IMAGES; do
         umount mnt_images/$img >/dev/null 2>&1
         rmdir mnt_images/$img >/dev/null 2>&1
+        rm -f $img-mod.img
     done
     rmdir mnt_images >/dev/null 2>&1
+
+    rm -rf package
 
     exit 1
 }
@@ -184,9 +187,11 @@ cd ..
 for img in $IMAGES; do
     umount mnt_images/$img >/dev/null 2>&1
     rmdir mnt_images/$img >/dev/null 2>&1
+    rm -f $img-mod.img
 done
 
 rmdir mnt_images >/dev/null 2>&1
+rm -rf package
 
 echo
 echo "ZIP \"$OUT_FILENAME\" was successfuly created!"
