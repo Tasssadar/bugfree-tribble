@@ -21,9 +21,6 @@ static char buff[2048];
 
 static int read_xattrs(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
 {
-    if (S_ISLNK(sb->st_mode))
-        return 0;
-
     printf("set_metadata(\"/%s\"", fpath);
 
     // caps
