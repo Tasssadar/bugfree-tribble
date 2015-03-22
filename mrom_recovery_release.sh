@@ -5,24 +5,15 @@ if [ -z "$TARGET_DEVICE" ]; then
     TARGET_DEVICE=$(basename $OUT)
 fi
 
+OTHER=""
+TAG="$TARGET_DEVICE"
+
 case $TARGET_DEVICE in
     flo)
-        TAG="flo"
         OTHER="deb"
-        CMPR="lzma"
-        DCMPR="lzcat"
         ;;
     grouper)
-        TAG="grouper"
         OTHER="tilapia"
-        CMPR="gzip"
-        DCMPR="zcat"
-        ;;
-    *)
-        TAG="$TARGET_DEVICE"
-        OTHER=""
-        CMPR="gzip"
-        DCMPR="zcat"
         ;;
 esac
 
@@ -59,6 +50,18 @@ cp -a $IMG_PATH ./
 
 if [ -n "$OTHER" ]; then
     bbootimg -x ./$(basename "$IMG_PATH") >/dev/null 2>&1 || exit 1
+
+    if lzma -S .img -t initrd.img >/dev/null 2>&1; then
+        DCMPR="lzcat -d -S .img"
+        CMPR="lzma"
+    elif gzip -qt initrd.img >/dev/null 2>&1; then
+        DCMPR="zcat"
+        CMPR="gzip"
+    else
+        echo "Failed to identify ramdisk compression!"
+        rm -r $TMP/mrom_recovery_release
+        exit 1
+    fi
 
     mkdir init
     cd init
