@@ -19,7 +19,9 @@ esac
 
 DEST_DIR="/home/tassadar/nexus/multirom/$TAG/"
 DEST_DIR_OTHER="/home/tassadar/nexus/multirom/$OTHER/"
-IMG_PATH="/home/tassadar/android/android-repo-om/out/target/product/$TAG/recovery.img"
+if [ -z "$IMG_PATH" ]; then
+    IMG_PATH="/home/tassadar/android/android-repo-om/out/target/product/$TAG/recovery.img"
+fi
 
 if [ "$RECOVERY_SUBVER" = "" ]; then
     RECOVERY_SUBVER="00"
