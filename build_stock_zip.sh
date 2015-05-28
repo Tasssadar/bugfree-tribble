@@ -101,6 +101,23 @@ for img in $IMAGES; do
     cd ../..
 done
 
+modify_initrd() {
+    cp file_contexts ../../package/ || fail "Failed to copy file_contexts!"
+    sed -i 's/ seclabel u:r:install_recovery:s0/ #seclabel u:r:install_recovery:s0/' init.rc # for SuperSU
+
+    fstab="fstab.${DEVICE}"
+    if [ -f "$fstab" ]; then
+        l="    $(grep 'forceencrypt=' "$fstab")"
+        if [ "$?" = "0" ]; then
+            echo "Replacing forceencrypt fstab flag with encryptable in $fstab, line:"
+            echo "$l"
+            sed -i 's/forceencrypt=/encryptable=/' "$fstab"
+        fi
+    else
+        echo "File $fstab does not exist!"
+    fi
+}
+
 process_bootimg() {
     echo "Processing boot.img..."
     rm -rf boot >/dev/null 2>&1
@@ -108,15 +125,16 @@ process_bootimg() {
     cp boot.img boot/
     cd boot
     extract_bootimg.sh boot.img > /dev/null || fail "Failed to extract boot image!"
-    cp init/file_contexts ../package/ || fail "Failed to copy file_contexts!"
-    sed -i 's/ seclabel u:r:install_recovery:s0/ #seclabel u:r:install_recovery:s0/' init/init.rc
+    cd init
+    modify_initrd
+    cd ..
     pack_bootimg.sh ../boot.img
     cd ..
     rm -r boot
 }
 
-process_initrd() {
-    echo "processing initrd.img"
+process_initrd_image() {
+    echo "Processing initrd.img"
     rm -rf init >/dev/null 2>&1
     mkdir init
     cd init
@@ -131,7 +149,7 @@ if $UBUNTU_TOUCH; then
 fi
 
 if [ -f "initrd.img" ]; then
-    process_initrd
+    process_initrd_image
 else
     process_bootimg
 fi
@@ -153,8 +171,12 @@ printf "$assert_str" > $SCRIPT_PATH
 echo "format(\"ext4\", \"EMMC\", \"${SYS_DEV}\", \"0\", \"/system\");" >> $SCRIPT_PATH
 echo "mount(\"ext4\", \"EMMC\", \"${SYS_DEV}\", \"/system\");" >> $SCRIPT_PATH
 
-cat "package/script_body" >> $SCRIPT_PATH || fail "Failed to write script body!"
-rm package/script_body
+if [ -f "package/script_body_${DEVICE}" ]; then
+    cat "package/script_body_${DEVICE}" >> $SCRIPT_PATH || fail "Failed to write script body!"
+else
+    cat "package/script_body" >> $SCRIPT_PATH || fail "Failed to write script body!"
+fi
+rm package/script_body*
 
 echo 'ui_print("Extracting boot.img...");' >> $SCRIPT_PATH
 echo "package_extract_file(\"boot.img\", \"${BOOT_DEV}\");" >> $SCRIPT_PATH

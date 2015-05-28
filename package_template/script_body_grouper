@@ -1,0 +1,35 @@
+ui_print("Extracting scripts...");
+
+package_extract_dir("scripts", "/tmp/");
+
+set_perm(0, 0, 0777, "/tmp/extract.sh");
+set_perm(0, 0, 0777, "/tmp/gnutar");
+set_perm(0, 0, 0777, "/tmp/tune2fs");
+
+unmount("/system");
+
+ui_print("Removing journal from /system");
+ifelse(
+run_program("/tmp/tune2fs", "-O", "^has_journal", "/dev/block/platform/sdhci-tegra.3/by-name/APP") != 0
+,(
+    ui_print("** Failed to remove journal from /system!");
+    abort();
+), "");
+
+mount("ext4", "EMMC", "/dev/block/platform/sdhci-tegra.3/by-name/APP", "/system");
+
+ui_print("Exracting archive to tmp...");
+package_extract_dir("rom", "/tmp/rom/");
+
+ui_print("Extracting data to /system partition...");
+ifelse(run_program("/tmp/extract.sh") != 0,
+(
+    ui_print("** Failed to extract archive!");
+    abort();
+),"");
+
+delete("/tmp/tune2fs");
+delete("/tmp/extract.sh");
+delete("/tmp/gnutar");
+delete_recursive("/tmp/rom");
+
