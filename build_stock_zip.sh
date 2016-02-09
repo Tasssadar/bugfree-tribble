@@ -97,13 +97,14 @@ for img in $IMAGES; do
 
     echo "Creating tar with $img files..."
     cd mnt_images/$img
-    tar -cz --numeric-owner -f ../../package/rom/$img.tar.gz ./*
+    tar -c --numeric-owner ./* | pigz -c > ../../package/rom/$img.tar.gz
     cd ../..
 done
 
 modify_initrd() {
     cp file_contexts ../../package/ || fail "Failed to copy file_contexts!"
-    sed -i 's/ seclabel u:r:install_recovery:s0/ #seclabel u:r:install_recovery:s0/' init.rc # for SuperSU
+    # Unused for systemless supersu?
+    #sed -i 's/ seclabel u:r:install_recovery:s0/ #seclabel u:r:install_recovery:s0/' init.rc # for SuperSU
 
     fstab="fstab.${DEVICE}"
     if [ -f "$fstab" ]; then
@@ -112,6 +113,13 @@ modify_initrd() {
             echo "Replacing forceencrypt fstab flag with encryptable in $fstab, line:"
             echo "$l"
             sed -i 's/forceencrypt=/encryptable=/' "$fstab"
+        fi
+
+        l="    $(grep 'verify=' "$fstab")"
+        if [ "$?" = "0" ]; then
+            echo "Removing verify fstab from $fstab, line:"
+            echo "$l"
+            sed -i 's/,\?verify=[^,]*//' "$fstab"
         fi
     else
         echo "File $fstab does not exist!"
