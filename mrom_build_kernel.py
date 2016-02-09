@@ -9,6 +9,21 @@ PATCHES_DIR = "/opt/android/kernels/patches"
 TEMPLATES_DIR = "/opt/android/kernels/templates"
 
 info = {
+    "flo": {
+        "make": BUILD_DIR + "/make_arm_48.sh",
+        "arch": "arm",
+        "dtb": False,
+        "aosp": {
+            "remote": "https://android.googlesource.com/kernel/msm",
+            "branch-prefix": "android-msm-flo-3.4-",
+            "defconfig": "flo_defconfig",
+        },
+        "cm": {
+            "remote": "https://github.com/CyanogenMod/android_kernel_google_msm.git",
+            "branch-prefix": "cm-",
+            "defconfig": "cyanogen_flo_defconfig",
+        }
+    },
     "mako": {
         "make": BUILD_DIR + "/make_arm_48.sh",
         "arch": "arm",
@@ -18,6 +33,11 @@ info = {
             "branch-prefix": "android-msm-mako-3.4-",
             "defconfig": "mako_defconfig",
         },
+        "cm": {
+            "remote": "https://github.com/CyanogenMod/android_kernel_google_msm.git",
+            "branch-prefix": "cm-",
+            "defconfig": "cyanogen_mako_defconfig",
+        }
     },
     "hammerhead": {
         "make": BUILD_DIR + "/make_arm_48.sh",
@@ -35,9 +55,6 @@ info = {
         },
     }
 }
-
-def run_cmd(cmd):
-    subprocess.call(cmd)
 
 def git_init(cfg):
     dirname = hashlib.md5(cfg["remote"]).hexdigest()
@@ -129,7 +146,7 @@ def make_zip(cfg, device, type, version, android_version):
 
     print "  Preparing %s..." % (dest)
 
-    shutil.copy(os.path.join(TEMPLATES_DIR, "hammerhead.zip"), dest)
+    shutil.copy(os.path.join(TEMPLATES_DIR, "%s.zip" % device), dest)
     with zipfile.ZipFile(dest, "a", zipfile.ZIP_DEFLATED) as z:
         z.write(kernel_image_path, "kernel/%s" % kernel_image_name)
     return os.path.basename(dest)
@@ -163,6 +180,10 @@ def update_config(device, type, zip_name, version, android_version):
         last_with_prefix = 0
         inserted = False
         for k in dev["kernels"]:
+            if "extra" not in k:
+                idx += 1
+                continue
+
             if k["name"] == kernel_cfg["name"]:
                 dev["kernels"][idx] = kernel_cfg
                 inserted = True
@@ -212,9 +233,13 @@ def upload_basketbuild(dev, zip):
 if __name__ == "__main__":
     cnt = -1
     clean = True
+    checkout_only = False
     for arg in sys.argv:
         if arg == "--noclean":
             clean=False
+            continue
+        elif arg == "--checkout":
+            checkout_only = True
             continue
 
         if cnt == 0:
@@ -242,6 +267,9 @@ if __name__ == "__main__":
         git_init(cfg[type])
         git_checkout(cfg[type], version)
         apply_patch("%s-%s.patch" % (dev, type))
+
+        if checkout_only:
+            continue
 
         if clean:
             subprocess.check_call([ cfg["make"], "mrproper" ])
