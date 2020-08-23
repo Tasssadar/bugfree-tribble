@@ -4,7 +4,7 @@ from os.path import isfile, join
 from datetime import datetime
 
 MANIFEST_NAME = "manifest.json"
-RSYNC_ADDR = "tasemnice:/usr/share/nginx/www/multirom/"
+RSYNC_ADDR = "tasemnice.eu:/usr/share/nginx/www/multirom/"
 BASE_ADDR = "http://tasemnice.eu/multirom/"
 MULTIROM_DIR = "/home/tassadar/nexus/multirom/"
 CONFIG_JSON = MULTIROM_DIR + "config.json"
@@ -114,7 +114,8 @@ class Utils:
         gpg = gnupg.GPG(gnupghome=key_path)
         gpg.encoding = 'utf-8'
         with open(path, "rb") as f:
-            signature = gpg.sign_file(f, passphrase=passphrase, detach=True)
+            # gpgv in MultiromMgr app supports only sha1
+            signature = gpg.sign_file(f, passphrase=passphrase, detach=True, extra_args=[ "--digest-algo", "SHA1" ])
         if not signature:
             raise Exception("Failed to sign file %s, probably bad passphrase!" % path);
         with open(destination, "w") as f:

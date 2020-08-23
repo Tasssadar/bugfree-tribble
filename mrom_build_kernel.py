@@ -53,6 +53,16 @@ info = {
             "branch-prefix": "cm-",
             "defconfig": "cyanogenmod_hammerhead_defconfig"
         },
+    },
+    "shamu": {
+        "make": BUILD_DIR + "/make_arm_48.sh",
+        "arch": "arm",
+        "dtb": True,
+        "aosp": {
+            "remote": "https://android.googlesource.com/kernel/msm",
+            "branch-prefix": "android-msm-shamu-3.10-",
+            "defconfig": "shamu_defconfig",
+        },
     }
 }
 
@@ -78,6 +88,7 @@ def git_checkout(cfg, version):
     subprocess.check_call(["git", "checkout", "origin/%s%s" % (cfg["branch-prefix"], version)])
     subprocess.check_call(["git", "reset", "--hard"])
     subprocess.check_call(["git", "clean", "-fd"])
+    subprocess.call(["git", "show", "-s", "--oneline"])
 
 def git_get_hash():
     hash = subprocess.check_output([ "git", "log", "-n1", "--format=format:%H" ])
@@ -289,13 +300,13 @@ if __name__ == "__main__":
     if len(zips) == 0:
         sys.exit(0)
 
-    for zip in zips:
-        print "\nUploading %s" % zip
-        dev = zips[zip]
+#    for zip in zips:
+#        print "\nUploading %s" % zip
+#        dev = zips[zip]
 
-        subprocess.check_call([ "upload_dhst.sh", os.path.join(MULTIROM_DIR, dev, zip), "multirom/%s" % dev ])
+#        subprocess.check_call([ "upload_dhst.sh", os.path.join(MULTIROM_DIR, dev, zip), "multirom/%s" % dev ])
 
-        print "  Uploading to basketbuild"
-        upload_basketbuild(dev, zip)
+#        print "  Uploading to basketbuild"
+#        upload_basketbuild(dev, zip)
 
 
